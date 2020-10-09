@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Hopac.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hopac" Version="0.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NBomber.FSharp\NBomber.FSharp.fsproj" />
+    <ProjectReference Include="..\NBomber.FSharp.Http\NBomber.FSharp.Http.fsproj" />
+  </ItemGroup>
+
+</Project>
