@@ -1,6 +1,4 @@
-[<AutoOpen>]
 module NBomber.FSharp.Hopac
-
 
 open Hopac
 open NBomber.Contracts
