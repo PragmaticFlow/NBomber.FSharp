@@ -27,14 +27,13 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
       - name: Build and pack
-        #run: dotnet build --configuration Release --no-restore
         run: |
           sed -i "s|<Version>\(.*\)</Version>|<Version>\1-ci-$GITHUB_RUN_ID</Version>|" Directory.Build.props
-          dotnet pack --nologo --configuration Release -o nuget
+          dotnet pack --nologo --no-restore --configuration Release -o nuget
       - name: Test
         run: dotnet test --no-restore --verbosity normal
-      - name: Push to NuGet.org
-        run: |
-          source=https://api.nuget.org/v3/index.json
-          nuget_key=${{secrets.NUGET_KEY}}
-          dotnet nuget push -s $source -k $nuget_key --skip-duplicate nuget/*.nupkg
+#      - name: Push to NuGet.org
+#        run: |
+#          source=https://api.nuget.org/v3/index.json
+#          nuget_key=${{secrets.NUGET_KEY}}
+#          dotnet nuget push -s $source -k $nuget_key --skip-duplicate nuget/*.nupkg
