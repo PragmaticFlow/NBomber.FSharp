@@ -34,4 +34,7 @@ jobs:
       - name: Test
         run: dotnet test --no-restore --verbosity normal
       - name: Push to NuGet.org
-        run: dotnet nuget push -k ${{secrets.NUGET_KEY}} nuget/*.nupkg
+        run: |
+          source=https://api.nuget.org/v3/index.json
+          nuget_key=${{secrets.NUGET_KEY}}
+          dotnet nuget push -s $source -k $nuget_key --skip-duplicate nuget/*.nupkg
