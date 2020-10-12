@@ -1,11 +1,13 @@
+[<AutoOpen>]
 module NBomber.FSharp.Hopac
+
 
 open Hopac
 open NBomber.Contracts
-open NBomber.FSharp.Builders
+open NBomber.FSharp
 
 type StepBuilder(name : string) =
-    inherit NBomber.FSharp.Builders.StepBuilder(name) with
+    inherit NBomber.FSharp.StepBuilder(name) with
         member __.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> #Job<Response>) =
             { Name = state.Name
               Feed = state.Feed
@@ -14,7 +16,7 @@ type StepBuilder(name : string) =
               DoNotTrack = state.DoNotTrack
             }
 type ScenarioBuilder(name: string) =
-    inherit NBomber.FSharp.Builders.ScenarioBuilder(name) with
+    inherit NBomber.FSharp.ScenarioBuilder(name) with
         member _.Init(scenario: Scenario, init) =
             Scenario.withInit (init >> startAsTask) scenario
         member _.Clean(scenario: Scenario, clean) =

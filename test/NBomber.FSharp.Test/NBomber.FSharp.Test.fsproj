@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <IsTest>true</IsTest>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

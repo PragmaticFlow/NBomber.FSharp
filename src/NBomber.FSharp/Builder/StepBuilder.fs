@@ -1,11 +1,10 @@
-namespace NBomber.FSharp.Builders
+namespace NBomber.FSharp
 
 open System
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open NBomber
 open NBomber.Contracts
-open NBomber.FSharp
 
 
 type IncompleteStep<'c,'f> =
@@ -19,8 +18,8 @@ type FullStep<'c,'f> =
     { Name : string
       Feed : IFeed<'f>
       Pool : IConnectionPoolArgs<'c>
-      Execute : (IStepContext<'c,'f> -> Response Task)
       DoNotTrack : bool
+      Execute : (IStepContext<'c,'f> -> Response Task)
     }
 
 type StepBuilder(name : string) =
@@ -77,13 +76,17 @@ type StepBuilder(name : string) =
 
     [<CustomOperation "pause">]
     member __.Pause(state : IncompleteStep<'c,'f>, timeSpan: TimeSpan) =
-      __.Execute(state, fun _ -> Task.Delay timeSpan)
+       { __.Execute(state, fun _ -> Task.Delay timeSpan) with
+             DoNotTrack = true }
     member __.Pause(state : IncompleteStep<'c,'f>, millis: int) =
-      __.Execute(state, fun _ -> Task.Delay millis)
+      { __.Execute(state, fun _ -> Task.Delay millis) with
+            DoNotTrack = true }
 
     [<CustomOperation "doNotTrack">]
-    member _.DoNotTrack(state : IncompleteStep<'c,'f>) = { state with DoNotTrack = true }
-    member _.DoNotTrack(state : FullStep<'c,'f>) =       { state with DoNotTrack = true }
+    member _.DoNotTrack(state : IncompleteStep<'c,'f>) =
+        { state with DoNotTrack = true }
+    member _.DoNotTrack(state : FullStep<'c,'f>) =
+        { state with DoNotTrack = true }
 
     [<CustomOperation "feed">]
     member _.WithFeed(state : IncompleteStep<'c,_>, feed) : IncompleteStep<'c,'f> =

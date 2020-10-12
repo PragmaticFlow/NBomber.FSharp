@@ -1,10 +1,9 @@
-namespace NBomber.FSharp.Builders
+namespace NBomber.FSharp
 
 open System
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open NBomber.Contracts
-open NBomber.FSharp
 
 /// scenario builder
 type ScenarioBuilder(name : string) =
@@ -59,7 +58,7 @@ type ScenarioBuilder(name : string) =
     member _.Init(scenario: Scenario, init) =
         Scenario.withInit (asUnitTask init) scenario
 
-    /// run an ation after test
+    /// run an action after test
     [<CustomOperation "clean">]
     member _.Clean(scenario: Scenario, clean) =
         Scenario.withClean clean scenario

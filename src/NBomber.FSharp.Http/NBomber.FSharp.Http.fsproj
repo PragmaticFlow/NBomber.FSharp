@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageTags>load-testing, performance-testing, integration-testing, fsharp, http</PackageTags>
+    <Description>F# extensions for NBomber.Http</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="HttpStepBuilder.fs" />
-    <Compile Include="Builders.fs" />
   </ItemGroup>
 
   <ItemGroup>

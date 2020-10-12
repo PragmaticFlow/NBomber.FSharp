@@ -1,16 +1,20 @@
-namespace NBomber.FSharp.Builders
+namespace NBomber.FSharp
 
 open NBomber.Contracts
 open NBomber.Configuration
-open NBomber.FSharp
 
+[<AutoOpen>]
+module private Internals =
+    let inline empty name =
+        { NBomberRunner.registerScenarios [] with TestSuite = name }
+    let inline addReportFormat (ctx: NBomberContext) format =
+        { ctx with ReportFormats = format::ctx.ReportFormats
+                                   |> List.distinct }
 /// performance test builder
 type RunnerBuilder(name: string) =
-    let empty =
-        { NBomberRunner.registerScenarios [] with TestSuite = name }
 
-    member _.Zero() = empty
-    member _.Yield _ = empty
+    member _.Zero() = empty name
+    member _.Yield _ = empty name
     member _.Run f = f
 
     /// define a list of test scenarios
@@ -18,23 +22,43 @@ type RunnerBuilder(name: string) =
     member _.Scenarios(ctx, scenarios) =
         { ctx with RegisteredScenarios = scenarios }
 
-    /// statisctics reporter
+    /// statistics reporter
     [<CustomOperation "reporter">]
-    member _.Report(ctx, reporter, interval) =
-        { ctx with ReportingSinks = [reporter]
-                   SendStatsInterval = interval }
+    member _.Report(ctx, reporter) =
+        { ctx with ReportingSinks = [reporter] }
 
+    /// statistics reporter
+    [<CustomOperation "reportInterval">]
+    member _.ReportInterval(ctx: NBomberContext, interval) =
+        { ctx with SendStatsInterval = interval }
+
+    /// add html to selected report formats
     [<CustomOperation "reportHtml">]
     member _.ReportHtml(ctx : NBomberContext) =
-        { ctx with ReportFormats = ReportFormat.Html::ctx.ReportFormats |> List.distinct }
+        addReportFormat ctx ReportFormat.Html
 
+    /// add markdown to selected report formats
+    [<CustomOperation "reportMd">]
+    member _.ReportMd(ctx : NBomberContext) =
+        addReportFormat ctx ReportFormat.Md
+
+    /// add markdown to selected report formats
+    [<CustomOperation "reportCsv">]
+    member _.ReportCsv(ctx : NBomberContext) =
+        addReportFormat ctx ReportFormat.Csv
+
+    /// add markdown to selected report formats
+    [<CustomOperation "reportTxt">]
+    member _.ReportTxt(ctx : NBomberContext) =
+        addReportFormat ctx ReportFormat.Txt
+
+    /// deletes default reporters from test runner
     [<CustomOperation "noReports">]
     member _.NoReports(ctx : NBomberContext) =
         { ctx with ReportFormats = [] }
 
-    /// test name
-    [<CustomOperation "name">]
-    member _.Name(ctx : NBomberContext, name) =
+    [<CustomOperation "testName">]
+    member _.TestName(ctx : NBomberContext, name) =
         { ctx with TestName = name }
 
     /// load test configuration from file path
@@ -52,13 +76,13 @@ type RunnerBuilder(name: string) =
     member _.Reports(ctx, plugins) =
         { ctx with WorkerPlugins = plugins }
 
-    // [<CustomOperation "runProcess">]
-    // member _.ApplicationTypeProcess(ctx) =
-    //     { ctx with ApplicationType = Some ApplicationType.Process }
+    [<CustomOperation "runProcess">]
+    member _.ApplicationTypeProcess(ctx) =
+        { ctx with ApplicationType = Some ApplicationType.Process }
 
-    // [<CustomOperation "runConsole">]
-    // member _.ApplicationTypeConsole(ctx) =
-    //     { ctx with ApplicationType = Some ApplicationType.Console }
+    [<CustomOperation "runConsole">]
+    member _.ApplicationTypeConsole(ctx) =
+        { ctx with ApplicationType = Some ApplicationType.Console }
 
     // [<CustomOperation "applicationType">]
     // member _.ApplicationType(ctx, application) =

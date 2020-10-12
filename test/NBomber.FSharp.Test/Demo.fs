@@ -11,13 +11,10 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Hopac
 open Serilog
+open FSharp.Json
 
 /// Dummy user record
 type User = { Id: Guid; UserName: string }
-
-module Json =
-    /// dummy json deserialize implementation
-    let deserialize<'a> a = Unchecked.defaultof<'a>
 
 let ms = milliseconds
 
@@ -112,7 +109,7 @@ let stepBuilderDemo () =
 
     steps
 
-let scenarioBuilderDemo simulations =
+let scenarioBuilderDemo =
     scenario "test delays" {
         warmUp (seconds 5)
         noWarmUp
@@ -122,7 +119,7 @@ let scenarioBuilderDemo simulations =
         init(fun ctx -> task {
             ctx.Logger.Information "init scenario task"
         })
-        clean(fun ctx -> ctx.Logger.Information "cleanup after sceanrio action")
+        clean(fun ctx -> ctx.Logger.Information "cleanup after scenario action")
 
         load [ KeepConstant(10, seconds 100)
                RampConstant(100, seconds 100)
@@ -139,4 +136,29 @@ let scenarioBuilderDemo simulations =
                 execute (fun _ -> Task.CompletedTask)
             }
         ]
+    }
+
+let runnerBuilderDemo reportingSink =
+    testSuite "Suite name" {
+        testName "Test name"
+        scenarios [ scenarioBuilderDemo ]
+
+        noReports
+        reporter reportingSink
+        reportHtml
+        reportTxt
+        reportCsv
+        reportMd
+        reportMd // used twice is useless - has no changes
+        noReports // but this removes them all again
+        reportInterval (seconds 5)
+
+        config "loadTestConfig.json"
+        infraConfig "infrastructureConfig.json"
+
+        plugins []
+        plugins []
+
+        runProcess
+        runConsole
     }

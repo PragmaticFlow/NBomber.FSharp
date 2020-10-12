@@ -1,0 +1,37 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+    strategy:
+      matrix:
+        dotnet:
+          #- '2.2.103'
+          - '3.0'
+          - '3.1.x'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build and pack
+        #run: dotnet build --configuration Release --no-restore
+        run: |
+          sed -i "s|<Version>\(.*\)</Version>|<Version>\1-ci-$GITHUB_RUN_ID</Version>|" Directory.Build.props
+          dotnet pack --nologo --configuration Release -o nuget
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+      - name: Push to NuGet.org
+        run: dotnet nuget push -k ${{secrets.NUGET_KEY}} nuget/*.nupkg

@@ -1,4 +1,4 @@
-namespace NBomber.Plugins.Http.Builders
+namespace NBomber.Plugins.Http
 
 open System
 open System.Diagnostics
@@ -161,7 +161,6 @@ type HttpStepBuilder(name: string) =
 
     /// Add a collection of header values
     [<CustomOperation "headers">]
-    // TODO also withRequest
     member inline _.Headers(state: HttpStepRequest<_,_>, headers) =
         { state with Headers = headers }
     member inline _.Headers(state: HttpStepRequest<_,_>, headers) =
@@ -195,7 +194,7 @@ type HttpStepBuilder(name: string) =
     member inline _.Content(state: HttpStepRequest<_,_>, content) =
         { state with WithContent = fun _ -> content }
 
-    /// Add url-endoced-formdata content
+    /// Add url-encoded-form-data content
     [<CustomOperation "formData">]
     member _.FormData(state: HttpStepRequest<_,_>, formData) =
         { state with WithContent = fun _ -> createFormData formData }
@@ -227,7 +226,7 @@ type HttpStepBuilder(name: string) =
     member inline _.HttpClientFactory(state: HttpStepCreateRequest<_, _>, httpClientFactory: IHttpClientFactory) =
         { state with HttpClientFactory = httpClientFactory.CreateClient }
 
-    /// Provide a responce check function
+    /// Provide a response check function
     [<CustomOperation "check">]
     member inline __.WithCheck(state: HttpStepRequest<_,_>, check: HttpResponseMessage -> Task<bool>) =
         { state with Checks = check :: state.Checks }
@@ -324,3 +323,9 @@ type HttpStepBuilder(name: string) =
             }
 
         Step.create (name, execute = action)
+
+[<AutoOpen>]
+module Builders =
+
+    /// creates a step builder for http requests
+    let httpStep = HttpStepBuilder
