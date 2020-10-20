@@ -6,7 +6,7 @@ open NBomber.FSharp
 
 type StepBuilder(name : string) =
     inherit NBomber.FSharp.StepBuilder(name) with
-        member __.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> #Job<Response>) =
+        member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> #Job<Response>) =
             { Name = state.Name
               Feed = state.Feed
               Pool = state.Pool
@@ -15,9 +15,9 @@ type StepBuilder(name : string) =
             }
 type ScenarioBuilder(name: string) =
     inherit NBomber.FSharp.ScenarioBuilder(name) with
-        member _.Init(scenario: Scenario, init) =
+        member inline _.Init(scenario: Scenario, init) =
             Scenario.withInit (init >> startAsTask) scenario
-        member _.Clean(scenario: Scenario, clean) =
+        member inline _.Clean(scenario: Scenario, clean) =
             Scenario.withClean (clean >> startAsTask) scenario
 
 let step = StepBuilder

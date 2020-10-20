@@ -13,10 +13,6 @@ module private Internals =
 /// performance test builder
 type RunnerBuilder(name: string) =
 
-    member _.Zero() = empty name
-    member _.Yield _ = empty name
-    member _.Run f = f
-
     /// define a list of test scenarios
     [<CustomOperation "scenarios">]
     member _.Scenarios(ctx, scenarios) =
@@ -87,3 +83,21 @@ type RunnerBuilder(name: string) =
     // [<CustomOperation "applicationType">]
     // member _.ApplicationType(ctx, application) =
     //     { ctx with ApplicationType = Some application }
+    member _.Zero() = empty name
+    member inline __.Yield (()) = __.Zero()
+    member inline __.Yield(scenario : Scenario) =
+        let ctx = __.Zero()
+        { ctx with RegisteredScenarios = scenario::ctx.RegisteredScenarios }
+    member inline __.Yield(step : IStep) =
+        let scn =
+            ScenarioBuilder step.StepName {
+                step
+            }
+        __.Yield(scn)
+    member inline _.Delay f = f()
+    member inline _.Run f = f
+    member inline __.Combine(state, state2) =
+        { state with RegisteredScenarios = state.RegisteredScenarios |> List.append state2.RegisteredScenarios }
+    member inline __.Combine(state, scenario: Scenario) =
+        { state with RegisteredScenarios = scenario::state.RegisteredScenarios }
+
