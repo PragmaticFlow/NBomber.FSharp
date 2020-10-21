@@ -16,7 +16,7 @@ jobs:
       matrix:
         dotnet:
           #- '2.2.103'
-          - '3.0'
+          #- '3.0'
           - '3.1.x'
     steps:
       - uses: actions/cache@v2
