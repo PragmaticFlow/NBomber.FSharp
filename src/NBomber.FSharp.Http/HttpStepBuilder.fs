@@ -1,30 +1,28 @@
-namespace NBomber.Plugins.Http
+namespace NBomber.FSharp.Http
 
 open System
 open System.Diagnostics
 open System.Threading.Tasks
 open System.Net.Http
 open FSharp.Control.Tasks.V2.ContextInsensitive
+open NBomber
 open NBomber.Contracts
 open NBomber.FSharp
 open Microsoft.Extensions.DependencyInjection
 open Serilog
 
-
-type HttpStepIncomplete =
-    { HttpClientFactory: unit -> HttpClient
-      CompletionOption: HttpCompletionOption
-      Checks: (HttpResponseMessage -> Task<Response>) list
-    }
-
-type HttpStepRequest<'a, 'b> =
-    { CreateRequest: IStepContext<'a, 'b> -> Task<HttpRequestMessage>
+type HttpStepRequest<'c, 'f> =
+    { Name: string
+      Feed: IFeed<'f>
+      Pool: IConnectionPoolArgs<'c>
+      DoNotTrack: bool
+      CreateRequest: IStepContext<'c, 'f> -> Task<HttpRequestMessage>
       Version: Version
       CompletionOption: HttpCompletionOption
-      HttpClientFactory: unit -> HttpClient
-      Checks: (HttpResponseMessage -> Task<bool>) list
-      WithRequest: (IStepContext<'a, 'b> -> HttpRequestMessage -> unit Task) list
-      WithResponse: (IStepContext<'a,'b> -> HttpResponseMessage -> unit Task) list
+      HttpClientFactory: string -> HttpClient
+      Checks: (HttpResponseMessage -> Task<string option>) list
+      WithRequest: (IStepContext<'c, 'f> -> HttpRequestMessage -> unit Task) list
+      WithResponse: (IStepContext<'c, 'f> -> HttpResponseMessage -> unit Task) list
     }
 
 /// module for private functions, because class is bad with type inferences
@@ -45,9 +43,6 @@ module private Internals =
         |> fun d -> new FormUrlEncodedContent(d)
         :> HttpContent
 
-    let defaultClientFactory =
-        ServiceCollection().AddHttpClient().BuildServiceProvider().GetService<IHttpClientFactory>()
-
     let inline logRequest (ctx: IStepContext<_,_>) (req: HttpRequestMessage) =
         if ctx.Logger.IsEnabled Events.LogEventLevel.Verbose then
             let body = if isNull req.Content then "" else req.Content.ReadAsStringAsync().Result
@@ -60,7 +55,7 @@ module private Internals =
             ctx.Logger.Verbose("\n [RESPONSE]: \n {0} \n [RES_BODY] \n {1} \n", res.ToString(), body)
         Task.FromResult()
 
-    let handleResponse (response: HttpResponseMessage) latencyMs =
+    let inline handleResponse (response: HttpResponseMessage) latencyMs =
         if response.IsSuccessStatusCode then
             let headersSize = response.Headers.ToString().Length
             let bodySize =
@@ -73,12 +68,30 @@ module private Internals =
             Response.Fail(response.ReasonPhrase)
             |> Task.FromResult
 
+    let httpClientFactory =
+        ServiceCollection().AddHttpClient().BuildServiceProvider().GetService<IHttpClientFactory>()
+    let inline defaultHttpClientFactory name =
+        httpClientFactory.CreateClient name
+
 type HttpStepBuilder(name: string) =
 
-    let empty: HttpStepIncomplete =
-        { HttpClientFactory = fun () -> defaultClientFactory.CreateClient name
-          CompletionOption = HttpCompletionOption.ResponseHeadersRead
-          Checks = []
+
+    let empty =
+        { Name = name
+          Feed = Feed.empty
+          Pool = ConnectionPoolArgs.empty
+        }
+    // let empty: HttpStepIncomplete =
+    //     { HttpClientFactory = fun () -> defaultClientFactory.CreateClient name
+    //       CompletionOption = HttpCompletionOption.ResponseHeadersRead
+    //       Checks = []
+    //     }
+
+    [<CustomOperation "dataFeed">]
+    member inline _.WithFeed(state : IncompleteStep<'c,_>, feed) : IncompleteStep<'c,'f> =
+        { Name = state.Name
+          Feed = feed
+          Pool = state.Pool
         }
 
     /// Add a routine to call on request before it is fired
@@ -105,17 +118,21 @@ type HttpStepBuilder(name: string) =
 
     /// provide a function to create request message instead of specifying each parameter
     [<CustomOperation "create">]
-    member inline _.CreateRequest(state: HttpStepIncomplete, createRequest: IStepContext<'c,'f> -> Task<HttpRequestMessage>): HttpStepRequest<'c,'f> =
-        { CreateRequest = createRequest
+    member _.CreateRequest(incomplete: IncompleteStep<'c, 'f>, createRequest: IStepContext<'c,'f> -> Task<HttpRequestMessage>): HttpStepRequest<'c,'f> =
+        { Name = incomplete.Name
+          Feed = incomplete.Feed
+          Pool = incomplete.Pool
+          CreateRequest = createRequest
           Version = Version "2.0"
           CompletionOption = HttpCompletionOption.ResponseHeadersRead
-          HttpClientFactory = state.HttpClientFactory
+          HttpClientFactory = defaultHttpClientFactory
           Checks = []
           WithRequest = []
           WithResponse = []
+          DoNotTrack = false
         }
 
-    member inline __.CreateRequest(state: HttpStepIncomplete, httpMsg) =
+    member inline __.CreateRequest(state: IncompleteStep<'c, 'f>, httpMsg) =
         __.CreateRequest(state, httpMsg >> Task.FromResult)
     member inline __.CreateRequest(state, httpMsg: Task<HttpRequestMessage>) =
         __.CreateRequest(state, fun _ -> httpMsg)
@@ -124,31 +141,41 @@ type HttpStepBuilder(name: string) =
 
     /// Provide a http client instance to use instead of created by default factory
     [<CustomOperation "httpClient">]
-    member inline _.HttpClient(state: HttpStepRequest<_,_>, httpClient) =
-        { state with HttpClientFactory = fun () -> httpClient }
+    member inline _.HttpClient(state: HttpStepRequest<'c,'f>, httpClient) =
+        { state with HttpClientFactory = fun _ -> httpClient }
 
     /// Provide a http client factory instead of default one
     [<CustomOperation "clientFactory">]
-    member inline _.HttpClientFactory(state: HttpStepRequest<_,_>, httpClientFactory) =
+    member inline _.HttpClientFactory(state: HttpStepRequest<'c,'f>, httpClientFactory) =
         { state with HttpClientFactory = httpClientFactory }
-    member inline _.HttpClientFactory(state: HttpStepRequest<_,_>, httpClientFactory: IHttpClientFactory) =
+    member inline _.HttpClientFactory(state: HttpStepRequest<'c,'f>, httpClientFactory: IHttpClientFactory) =
         { state with HttpClientFactory = httpClientFactory.CreateClient }
 
     /// Provide a response check function
     [<CustomOperation "check">]
-    member inline __.WithCheck(state: HttpStepRequest<_,_>, check: HttpResponseMessage -> Task<bool>, errorMessage: string) =
-        { state with Checks = check :: state.Checks }
-    member inline __.WithCheck(state: HttpStepRequest<_,_>, check: HttpResponseMessage -> bool, errorMessage: string) =
-        let checkTask response = task { return check response }
+    member inline __.WithCheck(state: HttpStepRequest<'c,'f>, errorMessage: string, check: HttpResponseMessage -> Task<bool>) =
+        let checkTask response =
+            task {
+                let! isOk = check response
+                if isOk then return None
+                else return Some errorMessage
+            }
         { state with Checks = checkTask :: state.Checks }
-    // TODO involve error message into check
+    member inline __.WithCheck(state: HttpStepRequest<'c,'f>, errorMessage: string, check: HttpResponseMessage -> bool) =
+        let checkTask response =
+            task {
+                let isOk = check response
+                if isOk then return None
+                else return Some errorMessage
+            }
+        { state with Checks = checkTask :: state.Checks }
 
     [<CustomOperation "logRequest">]
-    member inline _.LogRequest(state : HttpStepRequest<_,_>) =
+    member inline _.LogRequest(state : HttpStepRequest<'c,'f>) =
         { state with WithRequest = logRequest::state.WithRequest }
 
     [<CustomOperation "logResponse">]
-    member inline _.LogResponse(state : HttpStepRequest<_,_>) =
+    member inline _.LogResponse(state : HttpStepRequest<'c,'f>) =
         { state with WithResponse = logResponse::state.WithResponse }
 
     member _.Zero() = empty
@@ -156,17 +183,22 @@ type HttpStepBuilder(name: string) =
     member inline _.Delay f = f()
     member inline __.Yield(httpMsg: HttpRequestMessage): HttpStepRequest<unit,unit> =
         __.CreateRequest(__.Zero(), httpMsg)
-    member inline __.Combine(state: HttpStepRequest<_,_>, state2 : HttpStepIncomplete) =
-        printfn "Combine(%O, %O)" state state2
-        state // TODO merge them ?
-    // member inline __.Combine(state: HttpStepIncomplete, state2 : HttpStepRequest<_,_>) =
+    member inline __.Combine(state: HttpStepRequest<'c,'f>, state2 : IncompleteStep<'c, 'f>) =
+         { state with
+            Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+            Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+         } // TODO merge them ?
+    // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : HttpStepRequest<_,_>) =
     //     printfn "Combine(%O, %O)" state state2
     //     state2 // TODO merge them
-    member inline __.Combine(state: HttpStepIncomplete, httpMsg : HttpRequestMessage) =
-        printfn "Combine(%O, %O)" state httpMsg
-        __.CreateRequest(state, httpMsg)
-    member _.Run(state: HttpStepRequest<_, _>) =
-        let action (ctx: IStepContext<_, _>) =
+    // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : IncompleteStep<_,_>) =
+    //     printfn "Combine(%O, %O)" state state2
+    //     state2 // TODO merge them
+    // member inline __.Combine(state: IncompleteStep<'c, 'f>, httpMsg : HttpRequestMessage) =
+    //     printfn "Combine(%O, %O)" state httpMsg
+    //     __.CreateRequest(state, httpMsg)
+    member _.Run(state: HttpStepRequest<'c,'f>) =
+        let action (ctx: IStepContext<'c,'f>) =
             task {
                 let! request = state.CreateRequest ctx
                 request.Version <- state.Version
@@ -177,7 +209,8 @@ type HttpStepBuilder(name: string) =
                 let sw = Stopwatch.StartNew()
 
                 let! response =
-                    state.HttpClientFactory().SendAsync(request, state.CompletionOption, ctx.CancellationToken)
+                    state.HttpClientFactory(sprintf "%A" ctx.CorrelationId)
+                        .SendAsync(request, state.CompletionOption, ctx.CancellationToken)
 
                 sw.Stop()
                 let latencyMs = sw.ElapsedMilliseconds
@@ -189,14 +222,15 @@ type HttpStepBuilder(name: string) =
                     state.Checks
                     |> List.map (fun check -> check response)
                     |> Task.WhenAll
+                let checkErrors = checkResults |> Array.choose id |> String.concat "; "
 
-                if checkResults |> Array.forall id then
+                if String.IsNullOrEmpty checkErrors then
                     return! handleResponse response latencyMs
                 else
-                    return Response.Fail("not satisfied response checks")
+                    return Response.Fail checkErrors
             }
 
-        Step.create (name, execute = action)
+        Step.create (name, feed = state.Feed, connectionPoolArgs = state.Pool, execute = action)
 
 [<AutoOpen>]
 module Builders =

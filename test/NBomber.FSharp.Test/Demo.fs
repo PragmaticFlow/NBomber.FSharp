@@ -1,34 +1,71 @@
 module Demo
 
 open NBomber.FSharp
-open NBomber.Plugins.Http
+open NBomber.FSharp.Http
 open FsHttp.DslCE
+open FSharp.Json
+open FSharp.Control.Tasks.V2.ContextInsensitive
+
+type Token =
+    { access_token : string
+      expires_in : int
+      token_type : string
+    }
+
 
 let runnerDemo reportingSink =
     testSuite "demo suite" {
-        scenario "empty scenario" { noWarmUp }
+        // NOTE scenario without steps doesn't compile
+        // scenario "empty scenario" { noWarmUp }
 
         scenario "demo scenario" {
-            step "usual step" {
+            step "regular action step" {
                 execute ignore
                 doNotTrack
             }
 
-            httpStep "http step demo" {
+            httpStep "user authorization" {
                 httpMsg {
-                    POST "https://reqres.in/api/users"
-                    CacheControl "no-cache"
+                    POST "https://reqres.in/api/token"
+
                     body
-
-                    json """
-                    {
-                        "name": "morpheus",
-                        "job": "leader"
-                    }
-                    """
+                    formUrlEncoded [
+                        "grant_type", "password"
+                        "username", "eve.holt@reqres.in"
+                        "password", "pistol"
+                        "scope", "openid"
+                        "client_id", "client42"
+                        "client_secret", "client_secret.XYZ!§$%&"
+                    ]
                 }
+                handle (fun ctx _resp -> task {
+                    let! content = _resp.Content.ReadAsStringAsync()
+                    let token = content |> Json.deserialize<Token>
+                    ctx.Data.["access_token"] <- token.access_token
+                })
+            }
 
-                check (fun resp -> int resp.StatusCode = 204) "wrong response code"
+            httpStep "http step demo" {
+                create(fun ctx ->
+                    httpMsg {
+                        POST "https://reqres.in/api/users"
+                        CacheControl "no-cache"
+                        BearerAuth (string ctx.Data.["access_token"])
+
+                        body
+                        json """
+                        {
+                            "name": "morpheus",
+                            "job": "leader"
+                        }
+                        """
+                })
+
+                check "response code should be 204 Content"
+                    (fun resp -> int resp.StatusCode = 204)
+                check "response ContentLength should be set to 0"
+                    (fun resp -> resp.Content.Headers.ContentLength.HasValue &&
+                                 resp.Content.Headers.ContentLength.Value = 0L)
             }
 
             noWarmUp
@@ -36,4 +73,5 @@ let runnerDemo reportingSink =
 
         testName "demo test"
         reportHtml
+        reporter reportingSink
     }

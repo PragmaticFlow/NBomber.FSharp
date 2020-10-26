@@ -11,8 +11,9 @@ type StepBuilder(name : string) =
               Feed = state.Feed
               Pool = state.Pool
               Execute = exe >> startAsTask
-              DoNotTrack = state.DoNotTrack
+              DoNotTrack = false
             }
+
 type ScenarioBuilder(name: string) =
     inherit NBomber.FSharp.ScenarioBuilder(name) with
         member inline _.Init(scenario: Scenario, init) =

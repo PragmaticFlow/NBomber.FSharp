@@ -10,8 +10,7 @@ open NBomber.Contracts
 type IncompleteStep<'c, 'f> =
     { Name: string
       Feed: IFeed<'f>
-      Pool: IConnectionPoolArgs<'c>
-      DoNotTrack: bool }
+      Pool: IConnectionPoolArgs<'c> }
 
 type FullStep<'c, 'f> =
     { Name: string
@@ -25,7 +24,6 @@ type StepBuilder(name: string) =
         { Name = name
           Feed = Feed.empty
           Pool = ConnectionPoolArgs.empty
-          DoNotTrack = false
         }
 
     [<CustomOperation "execute">]
@@ -34,7 +32,7 @@ type StepBuilder(name: string) =
           Feed = state.Feed
           Pool = state.Pool
           Execute = exe
-          DoNotTrack = state.DoNotTrack
+          DoNotTrack = false
         }
 
     member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> Response Async) =
@@ -42,7 +40,7 @@ type StepBuilder(name: string) =
           Feed = state.Feed
           Pool = state.Pool
           Execute = fun ctx -> exe ctx |> Async.StartAsTask
-          DoNotTrack = state.DoNotTrack
+          DoNotTrack = false
         }
 
     member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> Task) =
@@ -53,7 +51,7 @@ type StepBuilder(name: string) =
             do! exe ctx
             return Response.Ok()
           }
-          DoNotTrack = state.DoNotTrack
+          DoNotTrack = false
         }
 
     member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> unit) =
@@ -64,7 +62,7 @@ type StepBuilder(name: string) =
             exe ctx
             return Response.Ok()
           }
-          DoNotTrack = state.DoNotTrack
+          DoNotTrack = false
         }
 
     member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> 'a Task) =
@@ -75,7 +73,7 @@ type StepBuilder(name: string) =
             let! _a = exe ctx
             return Response.Ok()
           }
-          DoNotTrack = state.DoNotTrack
+          DoNotTrack = false
         }
 
     [<CustomOperation "pause">]
@@ -87,17 +85,14 @@ type StepBuilder(name: string) =
             DoNotTrack = true }
 
     [<CustomOperation "doNotTrack">]
-    member inline _.DoNotTrack(state : IncompleteStep<'c,'f>) =
-        { state with DoNotTrack = true }
     member inline _.DoNotTrack(state : FullStep<'c,'f>) =
         { state with DoNotTrack = true }
 
-    [<CustomOperation "feed">]
+    [<CustomOperation "dataFeed">]
     member inline _.WithFeed(state : IncompleteStep<'c,_>, feed) : IncompleteStep<'c,'f> =
         { Name = state.Name
           Feed = feed
           Pool = state.Pool
-          DoNotTrack = state.DoNotTrack
         }
 
     [<CustomOperation "connectionPool">]
@@ -105,7 +100,6 @@ type StepBuilder(name: string) =
         { Name = state.Name
           Feed = state.Feed
           Pool = pool
-          DoNotTrack = state.DoNotTrack
         }
 
     member _.Zero() = empty

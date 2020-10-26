@@ -12,7 +12,7 @@ open NBomber
 open NBomber.Contracts
 open NBomber.FSharp
 open NBomber.FSharp.Hopac
-open NBomber.Plugins.Http
+open NBomber.FSharp.Http
 
 /// Dummy user record
 type User = { Id: Guid; UserName: string }
@@ -28,7 +28,7 @@ let delay (time: TimeSpan) (logger: Serilog.ILogger) =
 
 let stepBuilderTest () =
     let data =
-        FeedData.fromJson<int> "jsonPath"
+        FeedData.fromJson<Guid> "jsonPath"
         |> Feed.createCircular "none"
 
     let conns =
@@ -46,14 +46,14 @@ let stepBuilderTest () =
 
     let steps =
         [ step "task step" {
-              feed data
+              dataFeed data
               connectionPool conns
               execute (fun _ -> Response.Ok() |> Task.FromResult)
               doNotTrack
           }
           step "async step" {
-              doNotTrack
               execute (fun _ -> async { return Response.Ok() })
+              doNotTrack
           }
           step "job step" {
               execute (fun _ -> job { return Response.Ok() })
@@ -72,27 +72,35 @@ let stepBuilderTest () =
           }
 
           httpStep "all http features" {
-              httpMsg {
-                  GET "https://people.com"
+              dataFeed data
+              //   connectionPool conns
+              // NOTE this does not compile if there is dataFeed or connectionPool
+              //   httpMsg {
+              //     GET "https://nbomber.com/user/"
+              //   }
+              create(fun ctx ->
+                httpMsg {
+                  GET (sprintf "https://people.com %A" ctx.FeedItem)
                   Header "x-requestid" "like above but not random"
                   Header "other-header" "other value"
                   BearerAuth """{"access_token":"bla","expires_in":3600,"token_type":"weird"}"""
-                  transformHttpRequestMessage (fun req -> req)
-              }
+                  transformHttpRequestMessage id
+              })
+
               version "1.0"
               prepare (fun _ctx _req -> ())
               prepare (fun _ctx _req -> Task.FromResult())
               logRequest
               logResponse
-              handle (fun _ctx _req -> ())
-              handle (fun _ctx _req -> Task.FromResult())
+              handle (fun _ctx _resp -> ())
+              handle (fun _ctx _resp -> Task.FromResult())
               handle (fun ctx resp -> task {
                   let! users = resp.Content.ReadAsStringAsync()
                   ctx.Data.["users"] <- users |> Json.deserialize<User list> |> box
               })
 
-              check (fun _resp -> true)  "error message"
-              check (fun _resp -> Task.FromResult true)  "error message"
+              check "error message 1" (fun _resp -> true)
+              check "error message 2" (fun _resp -> Task.FromResult true)
           }
 
           httpStep "GET homepage" {
@@ -143,9 +151,12 @@ let stepBuilderTest () =
                 """
               }
           }
-        //   httpStep "yield FsHttp" {
-        //       httpMsg { GET "https://google.com" }
-        //   }
+          step "allow mixing regular and http steps and pauses" {
+              execute (fun _ -> Response.Ok() |> Task.FromResult)
+          }
+          step "pause 100 s" {
+            pause (seconds 100)
+          }
         ]
 
     steps
@@ -183,7 +194,7 @@ let scenarioBuilderTest = [
                 execute (fun ctx -> delay (ms 100) ctx.Logger)
             }
             step "pause 100 s" {
-                pause (seconds 100) // TODO ScenarioBuilder.Pause duplicates StepBuilder.Pause
+                pause (seconds 100)
             }
 
             step "wait 10" {
