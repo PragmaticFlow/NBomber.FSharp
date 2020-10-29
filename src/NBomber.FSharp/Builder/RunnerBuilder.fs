@@ -17,6 +17,8 @@ type RunnerBuilder(name: string) =
     [<CustomOperation "scenarios">]
     member _.Scenarios(ctx, scenarios) =
         { ctx with RegisteredScenarios = scenarios }
+    member _.Scenarios(ctx, scenarios) =
+        { ctx with RegisteredScenarios = List.ofSeq scenarios }
 
     /// statistics reporter
     [<CustomOperation "reporter">]

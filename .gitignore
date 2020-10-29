@@ -351,3 +351,8 @@ MigrationBackup/
 
 # JetBrains
 .idea/
+
+# fsdocs
+.fsdocs/
+output/
+push.sh

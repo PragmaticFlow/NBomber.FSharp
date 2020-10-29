@@ -1,7 +1,9 @@
 module Demo
 
+open Hopac
 open NBomber.FSharp
 open NBomber.FSharp.Http
+open NBomber.FSharp.Hopac
 open FsHttp.DslCE
 open FSharp.Json
 open FSharp.Control.Tasks.V2.ContextInsensitive
@@ -22,6 +24,11 @@ let runnerDemo reportingSink =
             step "regular action step" {
                 execute ignore
                 doNotTrack
+            }
+            step "hopac job step" {
+                execute(fun ctx -> job {
+                    ctx.Logger.Information "Start hopac job"
+                })
             }
 
             httpStep "user authorization" {

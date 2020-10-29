@@ -33,6 +33,8 @@ type ScenarioBuilder(name : string) =
     [<CustomOperation "steps">]
     member inline _.Steps(ScenarioNoSteps scenario, steps : IStep list) =
         scenario |> appendSteps steps |> ScenarioHasSteps
+    member inline _.Steps(ScenarioNoSteps scenario, steps) =
+        scenario |> appendSteps (List.ofSeq steps) |> ScenarioHasSteps
 
     // [<CustomOperation "pause">]
     // member inline _.Pause(scenario: Scenario, ms : int) =
@@ -63,13 +65,13 @@ type ScenarioBuilder(name : string) =
     [<CustomOperation "load">]
     member inline _.Load(ScenarioNoSteps scenario, simulations) =
         Scenario.withLoadSimulations simulations scenario |> ScenarioNoSteps
-    member inline _.Load(ScenarioNoSteps scenario, simulation) =
-        Scenario.withLoadSimulations [ simulation ] scenario |> ScenarioNoSteps
+    member inline _.Load(ScenarioNoSteps scenario, simulations) =
+        Scenario.withLoadSimulations (List.ofSeq simulations) scenario |> ScenarioNoSteps
 
     member inline _.Load(ScenarioHasSteps scenario, simulations) =
         Scenario.withLoadSimulations simulations scenario |> ScenarioHasSteps
-    member inline _.Load(ScenarioHasSteps scenario, simulation) =
-        Scenario.withLoadSimulations [ simulation ] scenario |> ScenarioHasSteps
+    member inline _.Load(ScenarioHasSteps scenario, simulations) =
+        Scenario.withLoadSimulations (List.ofSeq simulations) scenario |> ScenarioHasSteps
 
     /// run an action before test
     [<CustomOperation "init">]
