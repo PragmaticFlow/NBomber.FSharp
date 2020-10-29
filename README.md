@@ -1,8 +1,8 @@
 # NBomber.FSharp
 
-- [![NBomber.FSharp](https://buildstats.info/nuget/NBomber.FSharp)](https://www.nuget.org/packages/NBomber.FSharp/) NBomber.FSharp
-- [![NBomber.FSharp.Http](https://buildstats.info/nuget/NBomber.FSharp.Http)](https://www.nuget.org/packages/NBomber.FSharp.Http/) NBomber.FSharp.Http
-- [![NBomber.FSharp.Hopac](https://buildstats.info/nuget/NBomber.FSharp.Hopac)](https://www.nuget.org/packages/NBomber.FSharp.Hopac/) NBomber.FSharp.Hopac
+- [![NBomber.FSharp](https://buildstats.info/nuget/NBomber.FSharp?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp/) NBomber.FSharp
+- [![NBomber.FSharp.Http](https://buildstats.info/nuget/NBomber.FSharp.Http?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Http/) NBomber.FSharp.Http
+- [![NBomber.FSharp.Hopac](https://buildstats.info/nuget/NBomber.FSharp.Hopac?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Hopac/) NBomber.FSharp.Hopac
 
 [![Build history](https://buildstats.info/github/chart/PragmaticFlow/NBomber.FSharp)](https://github.com/PragmaticFlow/NBomber.FSharp/actions)
 
