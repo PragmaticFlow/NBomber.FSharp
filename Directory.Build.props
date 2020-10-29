@@ -1,0 +1,27 @@
+<Project>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <Authors>PragmaticFlow</Authors>
+        <Company>PragmaticFlow</Company>
+        <Version>1.0.0-beta03</Version>
+        <Copyright>PragmaticFlow@2020</Copyright>
+        <License>https://github.com/PragmaticFlow/NBomber.FSharp/blob/master/LICENSE</License>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/PragmaticFlow/NBomber.FSharp</PackageProjectUrl>
+        <PackageIcon>nbomber_icon.png</PackageIcon>
+        <RepositoryUrl>https://github.com/PragmaticFlow/NBomber.FSharp</RepositoryUrl>
+        <PackageTags>load-testing, performance-testing, integration-testing, fsharp</PackageTags>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <Description>F# extensions for NBomber</Description>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FSharp.Core" Version="4.7.2" />
+        <PackageReference Include="NBomber" Version="1.1.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="../../assets/nbomber_icon.png" Pack="true" Visible="false" PackagePath=""/>
+    </ItemGroup>
+</Project>

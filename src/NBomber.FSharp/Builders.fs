@@ -1,7 +1,6 @@
 [<AutoOpen>]
 module NBomber.FSharp.Builder
 
-open NBomber.FSharp.Builders
 
 /// creates a step builder
 let step = StepBuilder

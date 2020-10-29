@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageTags>load-testing, performance-testing, integration-testing, fsharp, hopac</PackageTags>
+    <Description>F# extensions for using Hopac with NBomber</Description>
   </PropertyGroup>
 
   <ItemGroup>

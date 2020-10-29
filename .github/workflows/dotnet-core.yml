@@ -1,0 +1,45 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+    strategy:
+      matrix:
+        dotnet:
+          #- '2.2.103'
+          #- '3.0'
+          - '3.1.x'
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build and pack
+        run: |
+          sed -i "s|<Version>\(.*\)</Version>|<Version>\1-ci-$GITHUB_RUN_ID</Version>|" Directory.Build.props
+          dotnet pack --nologo --no-restore --configuration Release -o nuget
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+#      - name: Push to NuGet.org
+#        run: |
+#          source=https://api.nuget.org/v3/index.json
+#          nuget_key=${{secrets.NUGET_KEY}}
+#          dotnet nuget push -s $source -k $nuget_key --skip-duplicate nuget/*.nupkg

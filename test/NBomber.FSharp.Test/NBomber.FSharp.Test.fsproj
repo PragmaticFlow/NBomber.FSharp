@@ -1,17 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <IsTest>true</IsTest>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DslTest.fs" />
     <Compile Include="Demo.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\NBomber.FSharp\NBomber.FSharp.fsproj" />
     <ProjectReference Include="..\..\src\NBomber.FSharp.Hopac\NBomber.FSharp.Hopac.fsproj" />
     <ProjectReference Include="..\..\src\NBomber.FSharp.Http\NBomber.FSharp.Http.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SchlenkR.FsHttp" Version="3.1.0" />
+    <PackageReference Include="Expecto" Version="9.0.2" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.9.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
   </ItemGroup>
 
 </Project>
