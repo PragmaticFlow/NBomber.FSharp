@@ -45,30 +45,56 @@ let stepBuilderTest () =
             }))
 
     let steps =
-        [ step "task step" {
-              dataFeed data
-              connectionPool conns
+        [
+          step "response task step" {
               execute (fun _ -> Response.Ok() |> Task.FromResult)
-              doNotTrack
           }
-          step "async step" {
+          step "response async step" {
               execute (fun _ -> async { return Response.Ok() })
-              doNotTrack
           }
-          step "job step" {
+          step "response job step" {
               execute (fun _ -> job { return Response.Ok() })
           }
+          step "response step" {
+            execute (fun _ -> Response.Ok())
+          }
+
+          step "task step" {
+              execute (fun _ -> Task.CompletedTask)
+          }
+          step "unit task step" {
+              execute (fun _ -> Task.FromResult())
+          }
+          step "unit async step" {
+              execute (fun _ -> async { return () })
+          }
+          step "unit job step" {
+              execute (fun _ -> job { return () })
+          }
+          step "unit step" {
+            execute (fun _ -> ())
+          }
+
           step "wait 100" {
               execute (fun ctx -> delay (ms 100) ctx.Logger)
           }
           step "wait 10" {
+              dataFeed data
+              connectionPool conns
               execute (fun ctx -> delay (ms 10) ctx.Logger)
+              doNotTrack
           }
-          step "wait 0" {
-              execute (fun _ -> Task.CompletedTask)
-          }
+
           step "wait pause 100" {
               pause (seconds 100)
+          }
+
+          step "right types from feed and connections" {
+              dataFeed data
+              connectionPool conns
+              execute (fun ctx ->
+                  let takeBoth (_: Guid) (_: ClientWebSocket) = ""
+                  ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Connection) )
           }
 
           httpStep "all http features" {
@@ -209,18 +235,22 @@ let scenarioBuilderTest = [
 
 let runnerBuilderTest reportingSink =
     testSuite "Suite name" {
+        report {
+            csv
+            text
+            markdown
+            html
+            // TODO
+            // formats [ NBomber.Configuration.ReportFormat.Html ]
+            sink reportingSink
+            interval (seconds 10)
+            folderName "reports"
+            fileName "reportFile"
+        }
+        noReports
+
         testName "Test name"
         scenarios scenarioBuilderTest
-
-        noReports
-        reporter reportingSink
-        reportHtml
-        reportTxt
-        reportCsv
-        reportMd
-        reportMd // used twice is useless - has no changes
-        noReports // but this removes them all again
-        reportInterval (seconds 5)
 
         config "loadTestConfig.json"
         infraConfig "infrastructureConfig.json"

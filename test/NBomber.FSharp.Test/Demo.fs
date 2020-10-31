@@ -17,6 +17,11 @@ type Token =
 
 let runnerDemo reportingSink =
     testSuite "demo suite" {
+
+        report {
+            html
+            sink reportingSink
+        }
         // NOTE scenario without steps doesn't compile
         // scenario "empty scenario" { noWarmUp }
 
@@ -77,8 +82,6 @@ let runnerDemo reportingSink =
 
             noWarmUp
         }
-
         testName "demo test"
-        reportHtml
-        reporter reportingSink
+
     }

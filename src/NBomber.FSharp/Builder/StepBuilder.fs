@@ -35,6 +35,14 @@ type StepBuilder(name: string) =
           DoNotTrack = false
         }
 
+    member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> Response) =
+        { Name = state.Name
+          Feed = state.Feed
+          Pool = state.Pool
+          Execute = exe >> Task.FromResult
+          DoNotTrack = false
+        }
+
     member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> Response Async) =
         { Name = state.Name
           Feed = state.Feed
@@ -65,7 +73,18 @@ type StepBuilder(name: string) =
           DoNotTrack = false
         }
 
-    member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> 'a Task) =
+    member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> unit Task) =
+        { Name = state.Name
+          Feed = state.Feed
+          Pool = state.Pool
+          Execute = fun ctx -> task {
+            let! _a = exe ctx
+            return Response.Ok()
+          }
+          DoNotTrack = false
+        }
+
+    member inline _.Execute (state : IncompleteStep<'c,'f>, exe : IStepContext<'c,'f> -> unit Async) =
         { Name = state.Name
           Feed = state.Feed
           Pool = state.Pool

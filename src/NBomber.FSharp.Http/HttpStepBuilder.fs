@@ -27,7 +27,7 @@ type HttpStepRequest<'c, 'f> =
 
 /// module for private functions, because class is bad with type inferences
 [<AutoOpen>]
-module private Internals =
+module private HttpStepInternals =
     open System.Collections.Generic
 
     let inline addPairs headers stateHeaders =

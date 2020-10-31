@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Builder/StepBuilder.fs" />
     <Compile Include="Builder/ScenarioBuilder.fs" />
+    <Compile Include="Builder/ReportBuilder.fs" />
     <Compile Include="Builder/RunnerBuilder.fs" />
     <Compile Include="Builders.fs" />
   </ItemGroup>

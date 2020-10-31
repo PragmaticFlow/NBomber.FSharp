@@ -1,15 +1,22 @@
 namespace NBomber.FSharp
 
 open NBomber.Contracts
-open NBomber.Configuration
 
 [<AutoOpen>]
-module private Internals =
+module private RunnerInternals =
     let inline empty name =
         { NBomberRunner.registerScenarios [] with TestSuite = name }
     let inline addReportFormat (ctx: NBomberContext) format =
         { ctx with ReportFormats = format::ctx.ReportFormats
                                    |> List.distinct }
+    let inline applyReport report ctx =
+        { ctx with
+            ReportFormats = report.Formats
+            ReportingSinks = report.Sinks
+            ReportFileName = report.FileName
+            ReportFolder = report.FolderName
+            SendStatsInterval = report.Interval
+        }
 /// performance test builder
 type RunnerBuilder(name: string) =
 
@@ -19,36 +26,6 @@ type RunnerBuilder(name: string) =
         { ctx with RegisteredScenarios = scenarios }
     member _.Scenarios(ctx, scenarios) =
         { ctx with RegisteredScenarios = List.ofSeq scenarios }
-
-    /// statistics reporter
-    [<CustomOperation "reporter">]
-    member _.Report(ctx, reporter) =
-        { ctx with ReportingSinks = [reporter] }
-
-    /// statistics reporter
-    [<CustomOperation "reportInterval">]
-    member _.ReportInterval(ctx: NBomberContext, interval) =
-        { ctx with SendStatsInterval = interval }
-
-    /// add html to selected report formats
-    [<CustomOperation "reportHtml">]
-    member _.ReportHtml(ctx : NBomberContext) =
-        addReportFormat ctx ReportFormat.Html
-
-    /// add markdown to selected report formats
-    [<CustomOperation "reportMd">]
-    member _.ReportMd(ctx : NBomberContext) =
-        addReportFormat ctx ReportFormat.Md
-
-    /// add markdown to selected report formats
-    [<CustomOperation "reportCsv">]
-    member _.ReportCsv(ctx : NBomberContext) =
-        addReportFormat ctx ReportFormat.Csv
-
-    /// add markdown to selected report formats
-    [<CustomOperation "reportTxt">]
-    member _.ReportTxt(ctx : NBomberContext) =
-        addReportFormat ctx ReportFormat.Txt
 
     /// deletes default reporters from test runner
     [<CustomOperation "noReports">]
@@ -67,7 +44,13 @@ type RunnerBuilder(name: string) =
     /// load infrastructure configuration from path
     [<CustomOperation "infraConfig">]
     member _.ConfigInfrastructure(ctx, path) =
-        NBomberRunner.loadInfraConfig path ctx
+        NBomberRunner.loadInfraConfig path ctx    /// load infrastructure configuration from path
+
+    [<CustomOperation "loggerConfig">]
+    member _.LoggerConfig(ctx, loggerConfig) =
+        NBomberRunner.withLoggerConfig loggerConfig ctx
+    member _.LoggerConfig(ctx, loggerConfig) =
+        NBomberRunner.withLoggerConfig (fun () -> loggerConfig) ctx
 
     /// set list of test runner plugins
     [<CustomOperation "plugins">]
@@ -87,9 +70,12 @@ type RunnerBuilder(name: string) =
     //     { ctx with ApplicationType = Some application }
     member _.Zero() = empty name
     member inline __.Yield (()) = __.Zero()
+    member inline __.Yield(report : ReportContext) =
+        __.Zero() |> applyReport report
     member inline __.Yield(scenario : Scenario) =
         let ctx = __.Zero()
-        { ctx with RegisteredScenarios = scenario::ctx.RegisteredScenarios }
+        {  __.Zero() with
+                RegisteredScenarios = scenario::ctx.RegisteredScenarios }
     member inline __.Yield(step : IStep) =
         let scn =
             ScenarioBuilder step.StepName {
@@ -102,4 +88,5 @@ type RunnerBuilder(name: string) =
         { state with RegisteredScenarios = state.RegisteredScenarios |> List.append state2.RegisteredScenarios }
     member inline __.Combine(state, scenario: Scenario) =
         { state with RegisteredScenarios = scenario::state.RegisteredScenarios }
-
+    member inline __.Combine(state, report: ReportContext) =
+        state |> applyReport report
