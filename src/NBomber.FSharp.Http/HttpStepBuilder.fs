@@ -187,13 +187,13 @@ type HttpStepBuilder(name: string) =
          { state with
             Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
             Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
-         } // TODO merge them ?
+         }
     // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : HttpStepRequest<_,_>) =
     //     printfn "Combine(%O, %O)" state state2
-    //     state2 // TODO merge them
+    //     state2
     // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : IncompleteStep<_,_>) =
     //     printfn "Combine(%O, %O)" state state2
-    //     state2 // TODO merge them
+    //     state2
     // member inline __.Combine(state: IncompleteStep<'c, 'f>, httpMsg : HttpRequestMessage) =
     //     printfn "Combine(%O, %O)" state httpMsg
     //     __.CreateRequest(state, httpMsg)

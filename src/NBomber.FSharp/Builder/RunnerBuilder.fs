@@ -17,6 +17,28 @@ module private RunnerInternals =
             ReportFolder = report.FolderName
             SendStatsInterval = report.Interval
         }
+
+    let inline getExitCode ctx (runResult: Result<NodeStats, string>) =
+        match runResult with
+        | Error e ->
+            eprintf """Error in "%s"/"%s":\n%A""" ctx.TestSuite ctx.TestName e
+            1
+        | Ok stats ->
+            let checkFailureRate maxFailureRate (stepStats: StepStats) =
+                if stepStats.OkCount <> 0 &&
+                   float stepStats.FailCount / float stepStats.OkCount < maxFailureRate
+                   then 1 else 0
+
+            let mutable exitCode = 0
+            for scenario in stats.ScenarioStats do
+                for step in scenario.StepStats do
+                    try
+                        exitCode <- exitCode + checkFailureRate 0.05 step
+                    with ex ->
+                        eprintfn "%s/%s failed: %A" scenario.ScenarioName step.StepName ex
+                        exitCode <- exitCode + 1
+            exitCode
+
 /// performance test builder
 type RunnerBuilder(name: string) =
 
@@ -44,7 +66,7 @@ type RunnerBuilder(name: string) =
     /// load infrastructure configuration from path
     [<CustomOperation "infraConfig">]
     member _.ConfigInfrastructure(ctx, path) =
-        NBomberRunner.loadInfraConfig path ctx    /// load infrastructure configuration from path
+        NBomberRunner.loadInfraConfig path ctx
 
     [<CustomOperation "loggerConfig">]
     member _.LoggerConfig(ctx, loggerConfig) =
@@ -65,9 +87,20 @@ type RunnerBuilder(name: string) =
     member _.ApplicationTypeConsole(ctx) =
         { ctx with ApplicationType = Some ApplicationType.Console }
 
-    // [<CustomOperation "applicationType">]
-    // member _.ApplicationType(ctx, application) =
-    //     { ctx with ApplicationType = Some application }
+    /// run with the specified cli arguments, return exit code
+    [<CustomOperation "withArgs">]
+    member _.WithArgs(ctx : NBomberContext, args) =
+        ctx
+        |> NBomberRunner.runWithArgs args
+        |> getExitCode ctx
+
+    /// run and return exit code, instead of result
+    [<CustomOperation "withExitCode">]
+    member _.WithExitCode(ctx : NBomberContext) =
+        ctx
+        |> NBomberRunner.run
+        |> getExitCode ctx
+
     member _.Zero() = empty name
     member inline __.Yield (()) = __.Zero()
     member inline __.Yield(report : ReportContext) =
@@ -83,10 +116,12 @@ type RunnerBuilder(name: string) =
             }
         __.Yield(scn)
     member inline _.Delay f = f()
-    member inline _.Run f = f
     member inline __.Combine(state, state2) =
         { state with RegisteredScenarios = state.RegisteredScenarios |> List.append state2.RegisteredScenarios }
     member inline __.Combine(state, scenario: Scenario) =
         { state with RegisteredScenarios = scenario::state.RegisteredScenarios }
     member inline __.Combine(state, report: ReportContext) =
         state |> applyReport report
+    member inline _.Run(ctx: NBomberContext) =
+        NBomberRunner.run ctx
+    member inline _.Run f = f

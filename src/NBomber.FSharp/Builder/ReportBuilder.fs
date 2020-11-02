@@ -45,9 +45,6 @@ type ReportBuilder() =
     [<CustomOperation "text">]
     member inline _.Text ctx =
         ctx |> addFormat ReportFormat.Txt
-    // [<CustomOperation "formats">]
-    // member _.Formats(ctx, formats) =
-    //     { ctx with Formats = formats }
 
     [<CustomOperation "sink">]
     member inline _.Sink(ctx, reporter) =

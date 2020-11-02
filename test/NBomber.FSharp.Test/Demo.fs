@@ -14,22 +14,21 @@ type Token =
       token_type : string
     }
 
-
-let runnerDemo reportingSink =
+// just for demo. actual entry point is Main.main
+//[<EntryPoint>]
+let main' (argv: string[]) : int =
     testSuite "demo suite" {
 
         report {
             html
-            sink reportingSink
         }
-        // NOTE scenario without steps doesn't compile
-        // scenario "empty scenario" { noWarmUp }
 
         scenario "demo scenario" {
             step "regular action step" {
                 execute ignore
                 doNotTrack
             }
+
             step "hopac job step" {
                 execute(fun ctx -> job {
                     ctx.Logger.Information "Start hopac job"
@@ -83,5 +82,5 @@ let runnerDemo reportingSink =
             noWarmUp
         }
         testName "demo test"
-
+        withArgs argv
     }

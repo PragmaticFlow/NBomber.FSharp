@@ -39,7 +39,7 @@ type StepBuilder(name: string) =
         { Name = state.Name
           Feed = state.Feed
           Pool = state.Pool
-          Execute = exe >> Task.FromResult
+          Execute = fun ctx -> task { return exe ctx }
           DoNotTrack = false
         }
 
@@ -47,7 +47,7 @@ type StepBuilder(name: string) =
         { Name = state.Name
           Feed = state.Feed
           Pool = state.Pool
-          Execute = fun ctx -> exe ctx |> Async.StartAsTask
+          Execute = fun ctx -> task { return! exe ctx }
           DoNotTrack = false
         }
 
@@ -67,7 +67,7 @@ type StepBuilder(name: string) =
           Feed = state.Feed
           Pool = state.Pool
           Execute = fun ctx -> task {
-            exe ctx
+            do exe ctx
             return Response.Ok()
           }
           DoNotTrack = false
@@ -78,7 +78,7 @@ type StepBuilder(name: string) =
           Feed = state.Feed
           Pool = state.Pool
           Execute = fun ctx -> task {
-            let! _a = exe ctx
+            do! exe ctx
             return Response.Ok()
           }
           DoNotTrack = false
@@ -89,7 +89,7 @@ type StepBuilder(name: string) =
           Feed = state.Feed
           Pool = state.Pool
           Execute = fun ctx -> task {
-            let! _a = exe ctx
+            do! exe ctx
             return Response.Ok()
           }
           DoNotTrack = false

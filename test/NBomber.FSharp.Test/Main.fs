@@ -64,6 +64,22 @@ let tests =
         |> Expect.equal "wrong warmup duration"
             (seconds 42)
     }
+    test "empty" {
+        testSuite "empty suite" {
+            report {
+                html
+            }
+
+            scenarios [
+                scenario "empty scenario" {
+                    step "empty step" {
+                        execute ignore
+                    }
+                }
+            ]
+            withExitCode
+        } |> Expect.equal "error exit code" 0
+    }
   ]
 
 [<EntryPoint>]

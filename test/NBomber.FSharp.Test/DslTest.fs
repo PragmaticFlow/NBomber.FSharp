@@ -72,7 +72,7 @@ let stepBuilderTest () =
               execute (fun _ -> job { return () })
           }
           step "unit step" {
-            execute (fun _ -> ())
+            execute ignore
           }
 
           step "wait 100" {
@@ -196,25 +196,24 @@ let scenarioBuilderTest = [
             execute (fun ctx -> delay (ms 100) ctx.Logger)
         }
     }
+
     scenario "test delays" {
         warmUp (seconds 5)
         noWarmUp
 
+        // init overloads without steps
+        init ignore
+        init (fun _ -> Task.CompletedTask)
+        init (fun _ -> Task.FromResult())
+        // clean overloads without steps
+        clean ignore
+        clean (fun _ -> Task.CompletedTask)
+        clean (fun _ -> Task.FromResult())
 
-        init(fun ctx -> task {
-            ctx.Logger.Information "init scenario task"
-        })
-        clean(fun ctx -> ctx.Logger.Information "cleanup after scenario action")
+        load []
+        load Seq.empty
+        load [||]
 
-        load [ KeepConstant(10, seconds 100)
-               RampConstant(100, seconds 100)
-             ]
-
-        // implicit yield step
-        // step "wait 100" {
-        //     execute (fun ctx -> delay (ms 100) ctx.Logger)
-        // }
-        // custom op steps
         steps [
             step "wait 100" {
                 execute (fun ctx -> delay (ms 100) ctx.Logger)
@@ -230,6 +229,25 @@ let scenarioBuilderTest = [
                 execute (fun _ -> Task.CompletedTask)
             }
         ]
+
+        // now the same but with non empty scenario (with steps)
+
+        warmUp (seconds 5)
+        noWarmUp
+
+        // init overload with steps
+        init ignore
+        init (fun _ -> Task.CompletedTask)
+        init (fun _ -> Task.FromResult())
+
+        // clean overloads with steps
+        clean ignore
+        clean (fun _ -> Task.CompletedTask)
+        clean (fun _ -> Task.FromResult())
+
+        load []
+        load Seq.empty
+        load [||]
     }
 ]
 
@@ -240,11 +258,9 @@ let runnerBuilderTest reportingSink =
             text
             markdown
             html
-            // TODO
-            // formats [ NBomber.Configuration.ReportFormat.Html ]
             sink reportingSink
             interval (seconds 10)
-            folderName "reports"
+            folderName "reportsFolder"
             fileName "reportFile"
         }
         noReports
@@ -256,15 +272,32 @@ let runnerBuilderTest reportingSink =
         infraConfig "infrastructureConfig.json"
 
         plugins []
-        plugins []
 
         runProcess
         runConsole
     }
 
-let simplifiedRunner =
+let yieldScenario =
+    testSuite "suite 1" {
+        scenario "scenario 1" {
+            step "step 1" { execute ignore }
+            step "step 2" { execute ignore }
+        }
+    }
+
+let yieldStep: Result<NodeStats,string> =
     testSuite "simplified" {
         step "dummy step" {
             execute ignore
         }
+    }
+
+let main' (_argv: string[]): int =
+    testSuite "" {
+        withExitCode
+    }
+
+let main'' (argv: string[]): int =
+    testSuite "" {
+        withArgs argv
     }
