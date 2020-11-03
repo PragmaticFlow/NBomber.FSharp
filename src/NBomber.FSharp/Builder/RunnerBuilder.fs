@@ -18,26 +18,18 @@ module private RunnerInternals =
             SendStatsInterval = report.Interval
         }
 
+    let inline checkFailureRate failureRate nodeStats =
+        nodeStats.RequestCount <> 0
+        && (float nodeStats.FailCount / float nodeStats.RequestCount) <= failureRate
+
     let inline getExitCode ctx (runResult: Result<NodeStats, string>) =
         match runResult with
         | Error e ->
             eprintf """Error in "%s"/"%s":\n%A""" ctx.TestSuite ctx.TestName e
             1
         | Ok stats ->
-            let checkFailureRate maxFailureRate (stepStats: StepStats) =
-                if stepStats.OkCount <> 0 &&
-                   float stepStats.FailCount / float stepStats.OkCount < maxFailureRate
-                   then 1 else 0
+            if checkFailureRate 0.05 stats then 0 else 1
 
-            let mutable exitCode = 0
-            for scenario in stats.ScenarioStats do
-                for step in scenario.StepStats do
-                    try
-                        exitCode <- exitCode + checkFailureRate 0.05 step
-                    with ex ->
-                        eprintfn "%s/%s failed: %A" scenario.ScenarioName step.StepName ex
-                        exitCode <- exitCode + 1
-            exitCode
 
 /// performance test builder
 type RunnerBuilder(name: string) =
