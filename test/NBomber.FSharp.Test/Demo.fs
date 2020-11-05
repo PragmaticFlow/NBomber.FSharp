@@ -25,7 +25,7 @@ let main' (argv: string[]) : int =
 
         scenario "demo scenario" {
             step "regular action step" {
-                execute ignore
+                execute (fun ctx -> ctx.Logger.Information "start regular action")
                 doNotTrack
             }
 

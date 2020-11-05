@@ -87,11 +87,22 @@ type HttpStepBuilder(name: string) =
     //       Checks = []
     //     }
 
+    [<CustomOperation "doNotTrack">]
+    member inline _.DoNotTrack(state : HttpStepRequest<'a,'b>) =
+        { state with DoNotTrack = true }
+
     [<CustomOperation "dataFeed">]
     member inline _.WithFeed(state : IncompleteStep<'c,_>, feed) : IncompleteStep<'c,'f> =
         { Name = state.Name
           Feed = feed
           Pool = state.Pool
+        }
+
+    [<CustomOperation "connectionPool">]
+    member inline _.WithPool(state : IncompleteStep<_,'f>, pool : IConnectionPoolArgs<'c>) : IncompleteStep<'c,'f> =
+        { Name = state.Name
+          Feed = state.Feed
+          Pool = pool
         }
 
     /// Add a routine to call on request before it is fired
@@ -183,20 +194,47 @@ type HttpStepBuilder(name: string) =
     member inline _.Delay f = f()
     member inline __.Yield(httpMsg: HttpRequestMessage): HttpStepRequest<unit,unit> =
         __.CreateRequest(__.Zero(), httpMsg)
+    member inline _.Combine(state: IncompleteStep<'c, 'f>, state2: IncompleteStep<'c, 'f>) =
+        {   Name = state.Name
+            Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+            Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+        }
+    member __.Combine(state: HttpStepRequest<'c,'f>, state2 : HttpStepRequest<'c, 'f>) =
+        { Name = state.Name
+          Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+          Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+          CreateRequest = state.CreateRequest
+          Version = Version "2.0"
+          CompletionOption = HttpCompletionOption.ResponseHeadersRead
+          HttpClientFactory = defaultHttpClientFactory
+          Checks = state.Checks |> List.append state2.Checks
+          WithRequest = state.WithRequest |> List.append state2.WithRequest
+          WithResponse = state.WithResponse |> List.append state2.WithResponse
+          DoNotTrack = state.DoNotTrack || state2.DoNotTrack
+        }
+
     member inline __.Combine(state: HttpStepRequest<'c,'f>, state2 : IncompleteStep<'c, 'f>) =
          { state with
             Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
             Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
          }
-    // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : HttpStepRequest<_,_>) =
-    //     printfn "Combine(%O, %O)" state state2
-    //     state2
-    // member inline __.Combine(state: IncompleteStep<'c, 'f>, state2 : IncompleteStep<_,_>) =
-    //     printfn "Combine(%O, %O)" state state2
-    //     state2
-    // member inline __.Combine(state: IncompleteStep<'c, 'f>, httpMsg : HttpRequestMessage) =
-    //     printfn "Combine(%O, %O)" state httpMsg
-    //     __.CreateRequest(state, httpMsg)
+    member inline __.Combine(state: IncompleteStep<'c,'f>, state2 : HttpStepRequest<'c, 'f>) =
+         { state with
+            Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+            Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+         }
+
+    member inline __.For (state: IncompleteStep<'c,'f>, f: unit -> HttpStepRequest<'c,'f>) =
+        __.Combine(state, f())
+    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> IncompleteStep<'c,'f>) =
+        __.Combine(state, f())
+    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> HttpStepRequest<'c,'f>) =
+        __.Combine(state, f())
+    member inline __.For (xs: seq<'T>, f: 'T -> HttpStepRequest<'c,'f>) =
+        xs
+        |> Seq.map f
+        |> Seq.reduce (fun a b -> __.Combine(a,b))
+
     member _.Run(state: HttpStepRequest<'c,'f>) =
         let action (ctx: IStepContext<'c,'f>) =
             task {
@@ -230,7 +268,12 @@ type HttpStepBuilder(name: string) =
                     return Response.Fail checkErrors
             }
 
-        Step.create (name, feed = state.Feed, connectionPoolArgs = state.Pool, execute = action)
+        Step.create (
+            name,
+            feed = state.Feed,
+            connectionPoolArgs = state.Pool,
+            execute = action,
+            doNotTrack = state.DoNotTrack)
 
 [<AutoOpen>]
 module Builders =

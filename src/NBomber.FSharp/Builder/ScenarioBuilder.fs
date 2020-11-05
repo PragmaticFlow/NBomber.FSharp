@@ -5,8 +5,10 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open NBomber.Contracts
 
+
 type ScenarioNoSteps  = ScenarioNoSteps of Scenario
 type ScenarioHasSteps = ScenarioHasSteps of Scenario
+
 
 [<AutoOpen>]
 module ScenarioInternals =
@@ -24,6 +26,7 @@ module ScenarioInternals =
         }
     let inline appendSteps steps scenario =
         { scenario with Steps = scenario.Steps |> List.append steps }
+
 
 /// scenario builder
 type ScenarioBuilder(name : string) =
@@ -105,35 +108,60 @@ type ScenarioBuilder(name : string) =
     member inline _.Clean(ScenarioHasSteps scenario, clean) =
         Scenario.withClean (asUnitTask clean) scenario |> ScenarioHasSteps
 
-    member inline __.Merge(scenario, otherScenario) =
-        let defaultWarmUp = TimeSpan.FromSeconds 30.0
-        let defaultLoad = [ InjectPerSec(rate = 50, during = TimeSpan.FromMinutes 1.0) ]
+    member __.Merge(scenario, otherScenario) =
+        let (ScenarioNoSteps defaultScenario) = empty
         { Scenario.ScenarioName = scenario.ScenarioName
           Init = otherScenario.Init |> Option.orElse scenario.Init
           Clean = otherScenario.Clean |> Option.orElse scenario.Clean
           Steps = List.append scenario.Steps otherScenario.Steps
           WarmUpDuration =
-            if scenario.WarmUpDuration = defaultWarmUp then
+            if scenario.WarmUpDuration = defaultScenario.WarmUpDuration then
                 otherScenario.WarmUpDuration
             else
                 scenario.WarmUpDuration
           LoadSimulations =
-            if scenario.LoadSimulations = defaultLoad then
+            if scenario.LoadSimulations = defaultScenario.LoadSimulations then
                 otherScenario.LoadSimulations
             else
                 scenario.LoadSimulations
         }
 
+
     member _.Zero() = empty
     member inline __.Yield(()) = __.Zero()
     member inline __.Yield(step : IStep) = __.Steps(__.Zero(), [step])
     member inline _.Delay f = f()
+
     member inline _.Combine(ScenarioNoSteps scenario, step: IStep) =
         scenario |> appendSteps [step] |> ScenarioHasSteps
     member inline __.Combine(ScenarioHasSteps scenario, step: IStep) =
         scenario |> appendSteps [step] |> ScenarioHasSteps
+
     member inline __.Combine(ScenarioHasSteps scenario, ScenarioHasSteps otherScenario) =
         __.Merge(scenario, otherScenario) |> ScenarioHasSteps
     member inline __.Combine(ScenarioHasSteps scenario, ScenarioNoSteps otherScenario) =
         __.Merge(scenario, otherScenario) |> ScenarioHasSteps
+    member inline __.Combine(ScenarioNoSteps scenario, ScenarioNoSteps otherScenario) =
+        __.Merge(scenario, otherScenario) |> ScenarioHasSteps
+
+    member inline __.For (ScenarioHasSteps scenario, f: unit -> ScenarioHasSteps) =
+        let (ScenarioHasSteps otherScenario) = f()
+        __.Merge(scenario, otherScenario) |> ScenarioHasSteps
+    member inline __.For (ScenarioNoSteps scenario, f: unit -> ScenarioHasSteps) =
+        let (ScenarioHasSteps otherScenario) = f()
+        __.Merge(scenario, otherScenario) |> ScenarioHasSteps
+    member inline __.For (xs: seq<'a>, f: 'a -> ScenarioNoSteps) =
+        xs
+        |> Seq.fold (fun (ScenarioNoSteps scenario) x ->
+            let (ScenarioNoSteps otherScenario) = f x
+            __.Merge(scenario, otherScenario) |> ScenarioNoSteps
+        ) (__.Zero())
+    member inline __.For (xs: seq<'a>, f: 'a -> ScenarioHasSteps) =
+        let (ScenarioNoSteps noSteps) = __.Zero()
+        xs
+        |> Seq.fold (fun (ScenarioHasSteps scenario) x ->
+            let (ScenarioHasSteps otherScenario) = f x
+            __.Merge(scenario, otherScenario) |> ScenarioHasSteps
+        ) (ScenarioHasSteps noSteps)
+
     member inline _.Run(ScenarioHasSteps scenario) = scenario

@@ -97,6 +97,18 @@ let stepBuilderTest () =
                   ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Connection) )
           }
 
+          httpStep "yield request message, can't use dataFeed and connectionPool" {
+              new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get)
+              doNotTrack
+          }
+
+          httpStep "create request message with context, with dataFeed and connnectionPool" {
+              dataFeed data
+              connectionPool conns
+              create (fun ctx -> new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get))
+              doNotTrack
+          }
+
           httpStep "all http features" {
               dataFeed data
               //   connectionPool conns
@@ -160,7 +172,6 @@ let stepBuilderTest () =
           }
           httpStep "create a message task from context" {
               create (fun _ctx ->
-
                     new Net.Http.HttpRequestMessage() |> Task.FromResult)
           }
 
@@ -279,15 +290,24 @@ let runnerBuilderTest reportingSink =
 
 let yieldScenario =
     testSuite "suite 1" {
+        testName "testName"
         scenario "scenario 1" {
             step "step 1" { execute ignore }
             step "step 2" { execute ignore }
         }
+        plugins []
+        report { html }
+        runProcess
     }
 
-let yieldStep: Result<NodeStats,string> =
-    testSuite "simplified" {
-        step "dummy step" {
+let yieldStep: Scenario =
+    scenario "bla" {
+        noWarmUp
+        step "dummy step 1" {
+            execute ignore
+        }
+        noWarmUp
+        step "dummy step 2" {
             execute ignore
         }
     }

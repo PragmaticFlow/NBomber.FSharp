@@ -4,8 +4,7 @@ open NBomber.Contracts
 
 [<AutoOpen>]
 module private RunnerInternals =
-    let inline empty name =
-        { NBomberRunner.registerScenarios [] with TestSuite = name }
+    let empty = NBomberRunner.registerScenarios []
     let inline addReportFormat (ctx: NBomberContext) format =
         { ctx with ReportFormats = format::ctx.ReportFormats
                                    |> List.distinct }
@@ -29,7 +28,8 @@ module private RunnerInternals =
             1
         | Ok stats ->
             if checkFailureRate 0.05 stats then 0 else 1
-
+    let inline orIfDefault defaultValue otherValue value =
+        if value = defaultValue then otherValue else value
 
 /// performance test builder
 type RunnerBuilder(name: string) =
@@ -93,14 +93,13 @@ type RunnerBuilder(name: string) =
         |> NBomberRunner.run
         |> getExitCode ctx
 
-    member _.Zero() = empty name
+    member _.Zero() = { empty with TestSuite = name }
     member inline __.Yield (()) = __.Zero()
     member inline __.Yield(report : ReportContext) =
         __.Zero() |> applyReport report
     member inline __.Yield(scenario : Scenario) =
         let ctx = __.Zero()
-        {  __.Zero() with
-                RegisteredScenarios = scenario::ctx.RegisteredScenarios }
+        { ctx with RegisteredScenarios = scenario::ctx.RegisteredScenarios }
     member inline __.Yield(step : IStep) =
         let scn =
             ScenarioBuilder step.StepName {
@@ -108,12 +107,36 @@ type RunnerBuilder(name: string) =
             }
         __.Yield(scn)
     member inline _.Delay f = f()
-    member inline __.Combine(state, state2) =
-        { state with RegisteredScenarios = state.RegisteredScenarios |> List.append state2.RegisteredScenarios }
+
+    member inline __.Combine(state: NBomberContext, otherState: NBomberContext) =
+        let zero = __.Zero()
+        {   TestSuite = state.TestSuite
+            TestName = state.TestName |> orIfDefault zero.TestName otherState.TestName
+            ApplicationType = state.ApplicationType |> Option.orElse otherState.ApplicationType
+            CreateLoggerConfig = state.CreateLoggerConfig |> Option.orElse otherState.CreateLoggerConfig
+            InfraConfig = state.InfraConfig |> Option.orElse otherState.InfraConfig
+            NBomberConfig = state.NBomberConfig |> Option.orElse otherState.NBomberConfig
+            RegisteredScenarios = state.RegisteredScenarios |> List.append otherState.RegisteredScenarios
+            ReportFileName = state.ReportFileName |> Option.orElse otherState.ReportFileName
+            ReportFolder = state.ReportFolder |> Option.orElse otherState.ReportFolder
+            ReportFormats = state.ReportFormats |> List.append otherState.ReportFormats
+            ReportingSinks = state.ReportingSinks |> List.append otherState.ReportingSinks
+            WorkerPlugins = state.WorkerPlugins |> List.append otherState.WorkerPlugins
+            SendStatsInterval = state.SendStatsInterval |> orIfDefault zero.SendStatsInterval otherState.SendStatsInterval
+        }
+
     member inline __.Combine(state, scenario: Scenario) =
         { state with RegisteredScenarios = scenario::state.RegisteredScenarios }
     member inline __.Combine(state, report: ReportContext) =
         state |> applyReport report
+
+    member inline __.For (state: NBomberContext, f: unit -> NBomberContext) =
+        __.Combine(state, f())
+    member inline __.For (xs: seq<'T>, f: 'T -> NBomberContext) =
+        xs
+        |> Seq.map f
+        |> Seq.reduce (fun a b -> __.Combine(a, b))
+
     member inline _.Run(ctx: NBomberContext) =
         NBomberRunner.run ctx
     member inline _.Run f = f
