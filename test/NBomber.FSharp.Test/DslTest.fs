@@ -121,7 +121,7 @@ let stepBuilderTest () =
                   GET (sprintf "https://people.com %A" ctx.FeedItem)
                   Header "x-requestid" "like above but not random"
                   Header "other-header" "other value"
-                  BearerAuth """{"access_token":"bla","expires_in":3600,"token_type":"weird"}"""
+                  AuthorizationBearer """{"access_token":"bla","expires_in":3600,"token_type":"weird"}"""
                   transformHttpRequestMessage id
               })
 

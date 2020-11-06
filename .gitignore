@@ -357,4 +357,5 @@ MigrationBackup/
 output/
 
 reports/
+nuget/
 push.sh

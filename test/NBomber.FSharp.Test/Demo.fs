@@ -61,7 +61,7 @@ let main' (argv: string[]) : int =
                     httpMsg {
                         POST "https://reqres.in/api/users"
                         CacheControl "no-cache"
-                        BearerAuth (string ctx.Data.["access_token"])
+                        AuthorizationBearer (string ctx.Data.["access_token"])
 
                         body
                         json """
