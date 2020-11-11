@@ -4,13 +4,14 @@ open NBomber.Contracts
 
 [<AutoOpen>]
 module private RunnerInternals =
-    let empty = NBomberRunner.registerScenarios []
+    let empty =
+        { NBomberRunner.registerScenarios [] with ReportFormats = [] }
     let inline addReportFormat (ctx: NBomberContext) format =
         { ctx with ReportFormats = format::ctx.ReportFormats
                                    |> List.distinct }
     let inline applyReport report ctx =
         { ctx with
-            ReportFormats = report.Formats
+            ReportFormats = defaultArg report.Formats []
             ReportingSinks = report.Sinks
             ReportFileName = report.FileName
             ReportFolder = report.FolderName
@@ -68,26 +69,28 @@ type RunnerBuilder(name: string) =
 
     /// set list of test runner plugins
     [<CustomOperation "plugins">]
-    member _.Reports(ctx, plugins) =
+    member _.Plugins(ctx, plugins) =
         { ctx with WorkerPlugins = plugins }
 
     [<CustomOperation "runProcess">]
     member _.ApplicationTypeProcess(ctx) =
         { ctx with ApplicationType = Some ApplicationType.Process }
+        |> NBomberRunner.run
 
     [<CustomOperation "runConsole">]
     member _.ApplicationTypeConsole(ctx) =
         { ctx with ApplicationType = Some ApplicationType.Console }
+        |> NBomberRunner.run
 
     /// run with the specified cli arguments, return exit code
-    [<CustomOperation "withArgs">]
+    [<CustomOperation "runWithArgs">]
     member _.WithArgs(ctx : NBomberContext, args) =
         ctx
         |> NBomberRunner.runWithArgs args
         |> getExitCode ctx
 
     /// run and return exit code, instead of result
-    [<CustomOperation "withExitCode">]
+    [<CustomOperation "runWithExitCode">]
     member _.WithExitCode(ctx : NBomberContext) =
         ctx
         |> NBomberRunner.run
@@ -137,6 +140,4 @@ type RunnerBuilder(name: string) =
         |> Seq.map f
         |> Seq.reduce (fun a b -> __.Combine(a, b))
 
-    member inline _.Run(ctx: NBomberContext) =
-        NBomberRunner.run ctx
     member inline _.Run f = f

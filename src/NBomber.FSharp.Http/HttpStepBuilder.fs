@@ -12,8 +12,7 @@ open Microsoft.Extensions.DependencyInjection
 open Serilog
 
 type HttpStepRequest<'c, 'f> =
-    { Name: string
-      Feed: IFeed<'f>
+    { Feed: IFeed<'f>
       Pool: IConnectionPoolArgs<'c>
       DoNotTrack: bool
       CreateRequest: IStepContext<'c, 'f> -> Task<HttpRequestMessage>
@@ -74,13 +73,13 @@ module private HttpStepInternals =
         httpClientFactory.CreateClient name
 
 type HttpStepBuilder(name: string) =
-
+    inherit NBomber.FSharp.StepEmptyBuilder()
 
     let empty =
-        { Name = name
-          Feed = Feed.empty
+        { Feed = Feed.empty
           Pool = ConnectionPoolArgs.empty
         }
+
     // let empty: HttpStepIncomplete =
     //     { HttpClientFactory = fun () -> defaultClientFactory.CreateClient name
     //       CompletionOption = HttpCompletionOption.ResponseHeadersRead
@@ -92,17 +91,9 @@ type HttpStepBuilder(name: string) =
         { state with DoNotTrack = true }
 
     [<CustomOperation "dataFeed">]
-    member inline _.WithFeed(state : IncompleteStep<'c,_>, feed) : IncompleteStep<'c,'f> =
-        { Name = state.Name
-          Feed = feed
+    member inline _.WithFeed(state : StepEmpty<'c,_>, feed) : StepEmpty<'c,'f> =
+        { Feed = feed
           Pool = state.Pool
-        }
-
-    [<CustomOperation "connectionPool">]
-    member inline _.WithPool(state : IncompleteStep<_,'f>, pool : IConnectionPoolArgs<'c>) : IncompleteStep<'c,'f> =
-        { Name = state.Name
-          Feed = state.Feed
-          Pool = pool
         }
 
     /// Add a routine to call on request before it is fired
@@ -129,9 +120,8 @@ type HttpStepBuilder(name: string) =
 
     /// provide a function to create request message instead of specifying each parameter
     [<CustomOperation "create">]
-    member _.CreateRequest(incomplete: IncompleteStep<'c, 'f>, createRequest: IStepContext<'c,'f> -> Task<HttpRequestMessage>): HttpStepRequest<'c,'f> =
-        { Name = incomplete.Name
-          Feed = incomplete.Feed
+    member _.CreateRequest(incomplete: StepEmpty<'c, 'f>, createRequest: IStepContext<'c,'f> -> Task<HttpRequestMessage>): HttpStepRequest<'c,'f> =
+        { Feed = incomplete.Feed
           Pool = incomplete.Pool
           CreateRequest = createRequest
           Version = Version "2.0"
@@ -143,7 +133,7 @@ type HttpStepBuilder(name: string) =
           DoNotTrack = false
         }
 
-    member inline __.CreateRequest(state: IncompleteStep<'c, 'f>, httpMsg) =
+    member inline __.CreateRequest(state: StepEmpty<'c, 'f>, httpMsg) =
         __.CreateRequest(state, httpMsg >> Task.FromResult)
     member inline __.CreateRequest(state, httpMsg: Task<HttpRequestMessage>) =
         __.CreateRequest(state, fun _ -> httpMsg)
@@ -191,17 +181,14 @@ type HttpStepBuilder(name: string) =
 
     member _.Zero() = empty
     member inline __.Yield(()) = __.Zero()
+    member inline __.Yield(pool: IConnectionPoolArgs<'c>) =
+        { Feed = Feed.empty; Pool = pool }
     member inline _.Delay f = f()
     member inline __.Yield(httpMsg: HttpRequestMessage): HttpStepRequest<unit,unit> =
         __.CreateRequest(__.Zero(), httpMsg)
-    member inline _.Combine(state: IncompleteStep<'c, 'f>, state2: IncompleteStep<'c, 'f>) =
-        {   Name = state.Name
-            Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
-            Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
-        }
+
     member __.Combine(state: HttpStepRequest<'c,'f>, state2 : HttpStepRequest<'c, 'f>) =
-        { Name = state.Name
-          Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+        { Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
           Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
           CreateRequest = state.CreateRequest
           Version = Version "2.0"
@@ -213,20 +200,22 @@ type HttpStepBuilder(name: string) =
           DoNotTrack = state.DoNotTrack || state2.DoNotTrack
         }
 
-    member inline __.Combine(state: HttpStepRequest<'c,'f>, state2 : IncompleteStep<'c, 'f>) =
+    member inline __.Combine(state: HttpStepRequest<'c,'f>, state2 : StepEmpty<'c, 'f>) =
          { state with
             Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
             Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
          }
-    member inline __.Combine(state: IncompleteStep<'c,'f>, state2 : HttpStepRequest<'c, 'f>) =
-         { state with
-            Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
-            Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+    member inline __.Combine(state: StepEmpty<unit,'f>, state2 : HttpStepRequest<'c, unit>) =
+         { Feed = state.Feed
+           Pool = state2.Pool
+         }
+    member inline __.Combine(state: StepEmpty<'c,unit>, state2 : HttpStepRequest<unit,'f>) =
+         { Feed = state2.Feed
+           Pool = state.Pool
          }
 
-    member inline __.For (state: IncompleteStep<'c,'f>, f: unit -> HttpStepRequest<'c,'f>) =
-        __.Combine(state, f())
-    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> IncompleteStep<'c,'f>) =
+
+    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> StepEmpty<'c,'f>) =
         __.Combine(state, f())
     member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> HttpStepRequest<'c,'f>) =
         __.Combine(state, f())

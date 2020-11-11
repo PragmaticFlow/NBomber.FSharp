@@ -5,6 +5,7 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Expecto
 open Expecto.Flip
+open NBomber.Configuration
 open NBomber.Contracts
 
 let delay (time: TimeSpan) (logger: Serilog.ILogger) =
@@ -33,8 +34,7 @@ let sim = [ InjectPerSec(20, seconds 40 )
             KeepConstant(50, seconds 100) ]
 
 [<Tests>]
-let samples =
-  testList "samples" [
+let scenarioTests =
     testList "scenario" [
         test "defaults" {
             let scn = scenario "default" {
@@ -102,24 +102,85 @@ let samples =
                 (seconds 42)
         }
       ]
-  ]
 
 [<Tests>]
-let testRuns =
+let runnerTests =
     testList "runner" [
+        test "reportcontext" {
+            let dummySink =
+                { new IReportingSink with
+                    member _.SinkName = "empty"
+                    member _.SaveFinalStats _ = Task.CompletedTask
+                    member _.SaveRealtimeStats _ = Task.CompletedTask
+                    member _.Init(_,_) = ()
+                    member _.Start _ = Task.CompletedTask
+                    member _.Stop() = Task.CompletedTask
+                    member _.Dispose() = () }
+            let ctx = report {
+                folderName "folder name"
+                html
+                interval (seconds 22)
+                csv
+                sink dummySink
+                markdown
+
+            }
+            ctx.Formats
+            |> Expect.wantSome "formats not set"
+            |> Expect.equal "wrong formats list" [ ReportFormat.Md
+                                                   ReportFormat.Csv
+                                                   ReportFormat.Html ]
+            ctx.Sinks
+            |> Expect.equal "wrong reporter sinks" [ dummySink ]
+            ctx.Interval
+            |> Expect.equal "wrong report interval" (seconds 22)
+            ctx.FolderName
+            |> Expect.wantSome "folder name not set"
+            |> Expect.equal "wrong folder name" "folder name"
+            ctx.FileName
+            |> Expect.isNone "file name should be not set"
+        }
+
+        test "reports" {
+            let ctx =
+                testSuite "test suite" {
+                    report { html }
+                    scenarios [
+                        scenario "empty scenario" {
+                            step "empty step" {
+                                execute ignore
+                            }
+                        }
+                    ]
+                }
+            ctx.ReportFormats
+            |> Expect.equal "wrong report format list" [ ReportFormat.Html ]
+
+            ctx.RegisteredScenarios.Length
+            |> Expect.equal "wrong scenarios count" 1
+            let steps =
+                ctx.RegisteredScenarios
+                |> List.head
+                |> (fun s -> s.Steps)
+            steps.Length
+            |> Expect.equal "wrong steps count" 1
+        }
         test "runner" {
             testSuite "empty suite" {
                 report {
                     html
+                    folderName "empty"
+                    fileName "empty"
                 }
                 scenarios [
                     scenario "empty scenario" {
+                        load [ InjectPerSec(1000, seconds 30) ]
                         step "empty step" {
                             execute ignore
                         }
                     }
                 ]
-                withExitCode
+                runWithExitCode
             } |> Expect.equal "error exit code" 0
         }
     ]

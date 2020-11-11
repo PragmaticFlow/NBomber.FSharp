@@ -7,14 +7,14 @@ open NBomber.Contracts
 type ReportContext =
     { FileName: string option
       FolderName: string option
-      Formats:  ReportFormat list
+      Formats:  ReportFormat list option
       Sinks: IReportingSink list
       Interval: TimeSpan
     }
     static member Empty =
         { FolderName = None
           FileName = None
-          Formats = []
+          Formats = None
           Sinks = []
           Interval = TimeSpan.FromSeconds(10.0)
         }
@@ -22,7 +22,11 @@ type ReportContext =
 [<AutoOpen>]
 module private ReportInternals =
     let inline addFormat format ctx =
-        { ctx with Formats = format::ctx.Formats }
+        let formats =
+            match ctx.Formats with
+            | None -> Some [format]
+            | Some fs -> Some (format::fs)
+        { ctx with Formats = formats }
 
 type ReportBuilder() =
 
@@ -49,6 +53,7 @@ type ReportBuilder() =
     [<CustomOperation "sink">]
     member inline _.Sink(ctx, reporter) =
         { ctx with Sinks = reporter::ctx.Sinks }
+
     [<CustomOperation "interval">]
     member inline _.Report(ctx, interval: TimeSpan) =
         { ctx with Interval = interval }

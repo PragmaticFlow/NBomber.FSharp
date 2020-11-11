@@ -7,6 +7,8 @@ open NBomber.FSharp.Hopac
 open FsHttp.DslCE
 open FSharp.Json
 open FSharp.Control.Tasks.V2.ContextInsensitive
+open System
+open System.Net.WebSockets
 
 type Token =
     { access_token : string
@@ -24,7 +26,21 @@ let main' (argv: string[]) : int =
         }
 
         scenario "demo scenario" {
+
             step "regular action step" {
+                connectionPool "websockets" {
+                    count 100
+
+                    connect (fun _nr cancel -> task {
+                      let ws = new ClientWebSocket()
+                      do! ws.ConnectAsync(Uri "web.socket.url", cancel)
+                      return ws
+                    })
+
+                    disconnect (fun ws cancel -> task {
+                      do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancel)
+                    })
+                }
                 execute (fun ctx -> ctx.Logger.Information "start regular action")
                 doNotTrack
             }
@@ -81,6 +97,7 @@ let main' (argv: string[]) : int =
 
             noWarmUp
         }
+
         testName "demo test"
-        withArgs argv
+        runWithArgs argv
     }

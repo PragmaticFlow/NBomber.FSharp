@@ -1,6 +1,9 @@
 [<AutoOpen>]
 module NBomber.FSharp.Builder
 
+/// creates a connection pool
+let connectionPool = ConnectionPoolBuilder
+
 /// creates a step builder
 let step = StepBuilder
 

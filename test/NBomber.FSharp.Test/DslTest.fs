@@ -13,9 +13,84 @@ open NBomber.Contracts
 open NBomber.FSharp
 open NBomber.FSharp.Hopac
 open NBomber.FSharp.Http
+open System.Threading
 
 /// Dummy user record
 type User = { Id: Guid; UserName: string }
+type ID = ID of int
+type DummyConnection =
+    { Nr: int
+      IsOpen: bool
+    }
+    member __.Open =
+        { __ with IsOpen = true }
+    member __.OpenTask (token: CancellationToken) = task {
+        return { __ with IsOpen = true }
+    }
+    member __.OpenAsync (token: CancellationToken) = async {
+        return { __ with IsOpen = true }
+    }
+    member __.Close (token: CancellationToken) = task {
+        return { __ with IsOpen = false }
+    }
+
+let ``connection pool connect changes type of connection``(): IConnectionPoolArgs<DummyConnection> =
+    connectionPool """operation "connect" changes the type of connection pool""" {
+
+        connect (fun _ -> 42 |> Task.FromResult)
+        disconnect (printfn "disconnect %i")
+
+        connect (fun _ -> 42.0 |> Task.FromResult)
+        disconnect (printfn "disconnect %f")
+
+        connect (fun _ _ -> ID 42 |> Task.FromResult)
+        disconnect (fun (ID i) -> printfn "disconnect %i" i)
+
+        connect (fun _ -> async { return 42 })
+        connect (fun _ -> async { return ID 42 })
+        connect (fun nr token -> async {
+            let c = { Nr = nr; IsOpen = false }
+            let! isOpen = c.OpenAsync token
+            return isOpen
+        })
+        disconnect (fun c token -> task {
+            let! _closed = c.Close token
+            return()
+        })
+    }
+
+let connectionPoolTest(): IConnectionPoolArgs<ID> =
+    connectionPool "connection pool overloads" {
+        count 42
+        count 24
+
+        connect (fun _ -> 42 |> Task.FromResult)
+        connect (fun _ -> async { return 42 })
+        connect (fun _ -> job { return 42 })
+
+        connect (fun _ _ -> 42 |> Task.FromResult)
+        connect (fun _ _ -> async { return 42 })
+        connect (fun _ _ -> job { return 42 })
+
+        connect (fun _ _ -> ID 42 |> Task.FromResult)
+        connect (fun _ _ -> ID 42 |> Task.FromResult)
+        connect (fun _ -> async { return 42 })
+        connect (fun _ -> async { return ID 42 })
+
+
+        disconnect ignore
+        disconnect (fun _ -> Task.CompletedTask)
+        disconnect (fun _ -> Task.FromResult())
+        disconnect (fun _ -> async { return () })
+        disconnect (fun _ -> job { return () })
+
+        disconnect (fun _ _ -> ())
+        disconnect (fun _ _ -> Task.CompletedTask)
+        disconnect (fun _ _ -> Task.FromResult())
+        disconnect (fun _ _ -> async { return () })
+        disconnect (fun _ _ -> job { return () })
+
+    }
 
 let ms = milliseconds
 
@@ -32,17 +107,19 @@ let stepBuilderTest () =
         |> Feed.createCircular "none"
 
     let conns =
-        let url = ""
-        ConnectionPoolArgs.create(
-            name = "websockets pool",
-            openConnection = (fun (_nr, cancel) -> task {
-                let ws = new ClientWebSocket()
-                do! ws.ConnectAsync(Uri url, cancel)
-                return ws
-            }),
-            closeConnection = (fun (ws: ClientWebSocket, cancel) -> task {
-                do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancel)
-            }))
+        connectionPool "websockets" {
+            count 100
+
+            connect (fun nr cancel -> task {
+              let ws = new ClientWebSocket()
+              do! ws.ConnectAsync(Uri "web.socket.url", cancel)
+              return ws
+            })
+
+            disconnect (fun ws cancel -> task {
+              do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancel)
+            })
+        }
 
     let steps =
         [
@@ -80,7 +157,7 @@ let stepBuilderTest () =
           }
           step "wait 10" {
               dataFeed data
-              connectionPool conns
+              conns
               execute (fun ctx -> delay (ms 10) ctx.Logger)
               doNotTrack
           }
@@ -91,7 +168,7 @@ let stepBuilderTest () =
 
           step "right types from feed and connections" {
               dataFeed data
-              connectionPool conns
+              conns
               execute (fun ctx ->
                   let takeBoth (_: Guid) (_: ClientWebSocket) = ""
                   ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Connection) )
@@ -104,7 +181,7 @@ let stepBuilderTest () =
 
           httpStep "create request message with context, with dataFeed and connnectionPool" {
               dataFeed data
-              connectionPool conns
+              conns
               create (fun ctx -> new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get))
               doNotTrack
           }
@@ -284,7 +361,6 @@ let runnerBuilderTest reportingSink =
 
         plugins []
 
-        runProcess
         runConsole
     }
 
@@ -314,10 +390,10 @@ let yieldStep: Scenario =
 
 let main' (_argv: string[]): int =
     testSuite "" {
-        withExitCode
+        runWithExitCode
     }
 
 let main'' (argv: string[]): int =
     testSuite "" {
-        withArgs argv
+        runWithArgs argv
     }
