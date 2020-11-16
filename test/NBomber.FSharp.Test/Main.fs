@@ -165,7 +165,7 @@ let runnerTests =
             steps.Length
             |> Expect.equal "wrong steps count" 1
         }
-        test "runner" {
+        ptest "runner" {
             testSuite "empty suite" {
                 report {
                     html
