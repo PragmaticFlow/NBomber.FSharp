@@ -38,7 +38,7 @@ jobs:
           sed -i "s|<Version>\(.*\)</Version>|<Version>\1-ci-$GITHUB_RUN_ID</Version>|" Directory.Build.props
           dotnet pack --nologo --no-restore --configuration Release -o nuget
       - name: Test
-        run: dotnet run --configuration Release --project test/Nbomber.FSharp.Test -- --summary
+        run: dotnet run --configuration Release --project test/NBomber.FSharp.Test/NBomber.FSharp.Test.fsproj -- --summary
 #      - name: Push to NuGet.org
 #        run: |
 #          source=https://api.nuget.org/v3/index.json
