@@ -18,7 +18,7 @@ jobs:
           #- '2.2.103'
           #- '3.0'
           - '3.1.x'
-          - '5.0.x' 
+          #- '5.0.x'
     steps:
       - uses: actions/cache@v2
         with:
@@ -38,7 +38,7 @@ jobs:
           sed -i "s|<Version>\(.*\)</Version>|<Version>\1-ci-$GITHUB_RUN_ID</Version>|" Directory.Build.props
           dotnet pack --nologo --no-restore --configuration Release -o nuget
       - name: Test
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet run --configuration Release -- --summary
 #      - name: Push to NuGet.org
 #        run: |
 #          source=https://api.nuget.org/v3/index.json
