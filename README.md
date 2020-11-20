@@ -1,21 +1,13 @@
 # NBomber.FSharp
 
-- [![NBomber.FSharp](https://buildstats.info/nuget/NBomber.FSharp?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp/) NBomber.FSharp
-- [![NBomber.FSharp.Http](https://buildstats.info/nuget/NBomber.FSharp.Http?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Http/) NBomber.FSharp.Http
-- [![NBomber.FSharp.Hopac](https://buildstats.info/nuget/NBomber.FSharp.Hopac?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Hopac/) NBomber.FSharp.Hopac
+F# Computation Expressions for [NBomber](https://nbomber.com) API
+
+| Package              | Description | Status |
+|----------------------|-------------|--------|
+| NBomber.FSharp       | CE for test runners, scenarios and steps | [![NBomber.FSharp](https://buildstats.info/nuget/NBomber.FSharp?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp/) |
+| NBomber.FSharp.Http  | CE for http calls steps, similar to NBomber.Plugins.Http | [![NBomber.FSharp.Http](https://buildstats.info/nuget/NBomber.FSharp.Http?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Http/) |
+| NBomber.FSharp.Hopac | [Hopac](https://hopac.github.io) support for the above, depends on both | [![NBomber.FSharp.Hopac](https://buildstats.info/nuget/NBomber.FSharp.Hopac?includePreReleases=true)](https://www.nuget.org/packages/NBomber.FSharp.Hopac/) |
 
 [![Build history](https://buildstats.info/github/chart/PragmaticFlow/NBomber.FSharp)](https://github.com/PragmaticFlow/NBomber.FSharp/actions)
 
-
-NBomber Extensions for F#
-
-- NBomber.FSharp - set of computation expressions for test runners, scenarios and steps
-- NBomber.FSharp.Http - for building steps with http calls, similar to NBomber.Plugins.Http
-- NBomber.FSharp.Hopac - Hopac support for the above
-
-Checkout [Demo.fs](test/NBomber.FSharp.Test/Demo.fs) for how it looks like
-
-### Disclaimer
-
-The API is currently a subject for massive changes. Therefore no recommendation to put it into heavy usage.
-But feedback or PR is pretty appreciated.
+Look at [Demo.fs](test/NBomber.FSharp.Test/Demo.fs) for usage
