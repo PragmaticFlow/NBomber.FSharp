@@ -2,35 +2,6 @@ namespace NBomber.FSharp
 
 open NBomber.Contracts
 
-[<AutoOpen>]
-module private RunnerInternals =
-    let empty =
-        { NBomberRunner.registerScenarios [] with ReportFormats = [] }
-    let inline addReportFormat (ctx: NBomberContext) format =
-        { ctx with ReportFormats = format::ctx.ReportFormats
-                                   |> List.distinct }
-    let inline applyReport report ctx =
-        { ctx with
-            ReportFormats = defaultArg report.Formats []
-            ReportingSinks = report.Sinks
-            ReportFileName = report.FileName
-            ReportFolder = report.FolderName
-            SendStatsInterval = report.Interval
-        }
-
-    let inline checkFailureRate failureRate nodeStats =
-        nodeStats.RequestCount <> 0
-        && (float nodeStats.FailCount / float nodeStats.RequestCount) <= failureRate
-
-    let inline getExitCode ctx (runResult: Result<NodeStats, string>) =
-        match runResult with
-        | Error e ->
-            eprintf """Error in "%s"/"%s":\n%A""" ctx.TestSuite ctx.TestName e
-            1
-        | Ok stats ->
-            if checkFailureRate 0.05 stats then 0 else 1
-    let inline orIfDefault defaultValue otherValue value =
-        if value = defaultValue then otherValue else value
 
 /// performance test builder
 type RunnerBuilder(name: string) =
@@ -45,7 +16,7 @@ type RunnerBuilder(name: string) =
     /// deletes default reporters from test runner
     [<CustomOperation "noReports">]
     member _.NoReports(ctx : NBomberContext) =
-        { ctx with ReportFormats = [] }
+        { ctx with Reporting = { ctx.Reporting with Formats = [] }}
 
     [<CustomOperation "testName">]
     member _.TestName(ctx : NBomberContext, name) =
@@ -96,10 +67,10 @@ type RunnerBuilder(name: string) =
         |> NBomberRunner.run
         |> getExitCode ctx
 
-    member _.Zero() = { empty with TestSuite = name }
+    member _.Zero() = { zeroContext with TestSuite = name }
     member inline __.Yield (()) = __.Zero()
-    member inline __.Yield(report : ReportContext) =
-        __.Zero() |> applyReport report
+    member inline __.Yield(report : ReportingContext) =
+        { __.Zero() with Reporting = report }
     member inline __.Yield(scenario : Scenario) =
         let ctx = __.Zero()
         { ctx with RegisteredScenarios = scenario::ctx.RegisteredScenarios }
@@ -111,6 +82,15 @@ type RunnerBuilder(name: string) =
         __.Yield(scn)
     member inline _.Delay f = f()
 
+    member inline __.Combine(state: ReportingContext, otherState: ReportingContext) =
+        let zero = __.Zero().Reporting
+        {
+            FileName = state.FileName |> Option.orElse otherState.FileName
+            FolderName = state.FolderName |> Option.orElse otherState.FolderName
+            Formats = state.Formats |> orIfDefault zero.Formats otherState.Formats
+            Sinks = state.Sinks |> orIfDefault zero.Sinks otherState.Sinks
+            SendStatsInterval = state.SendStatsInterval |> orIfDefault zero.SendStatsInterval otherState.SendStatsInterval
+        }
     member inline __.Combine(state: NBomberContext, otherState: NBomberContext) =
         let zero = __.Zero()
         {   TestSuite = state.TestSuite
@@ -120,18 +100,15 @@ type RunnerBuilder(name: string) =
             InfraConfig = state.InfraConfig |> Option.orElse otherState.InfraConfig
             NBomberConfig = state.NBomberConfig |> Option.orElse otherState.NBomberConfig
             RegisteredScenarios = state.RegisteredScenarios |> List.append otherState.RegisteredScenarios
-            ReportFileName = state.ReportFileName |> Option.orElse otherState.ReportFileName
-            ReportFolder = state.ReportFolder |> Option.orElse otherState.ReportFolder
-            ReportFormats = state.ReportFormats |> List.append otherState.ReportFormats
-            ReportingSinks = state.ReportingSinks |> List.append otherState.ReportingSinks
+            Reporting = __.Combine(state.Reporting, otherState.Reporting)
+            UseHintsAnalyzer = true
             WorkerPlugins = state.WorkerPlugins |> List.append otherState.WorkerPlugins
-            SendStatsInterval = state.SendStatsInterval |> orIfDefault zero.SendStatsInterval otherState.SendStatsInterval
         }
 
     member inline __.Combine(state, scenario: Scenario) =
         { state with RegisteredScenarios = scenario::state.RegisteredScenarios }
-    member inline __.Combine(state, report: ReportContext) =
-        state |> applyReport report
+    member inline __.Combine(state, report: ReportingContext) =
+        { state with Reporting = report }
 
     member inline __.For (state: NBomberContext, f: unit -> NBomberContext) =
         __.Combine(state, f())

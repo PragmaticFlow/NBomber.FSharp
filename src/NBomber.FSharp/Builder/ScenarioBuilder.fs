@@ -1,8 +1,7 @@
 namespace NBomber.FSharp
 
-open System
 open System.Threading.Tasks
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.NonAffine
 open NBomber.Contracts
 
 
@@ -30,7 +29,6 @@ module ScenarioInternals =
 
 /// scenario builder
 type ScenarioBuilder(name : string) =
-    let empty = Scenario.create name [] |> ScenarioNoSteps
 
     /// add external list of steps
     [<CustomOperation "steps">]
@@ -109,11 +107,12 @@ type ScenarioBuilder(name : string) =
         Scenario.withClean (asUnitTask clean) scenario |> ScenarioHasSteps
 
     member __.Merge(scenario, otherScenario) =
-        let (ScenarioNoSteps defaultScenario) = empty
+        let (ScenarioNoSteps defaultScenario) = __.Zero()
+        let steps = List.append scenario.Steps otherScenario.Steps
         { Scenario.ScenarioName = scenario.ScenarioName
           Init = otherScenario.Init |> Option.orElse scenario.Init
           Clean = otherScenario.Clean |> Option.orElse scenario.Clean
-          Steps = List.append scenario.Steps otherScenario.Steps
+          Steps = steps
           WarmUpDuration =
             if scenario.WarmUpDuration = defaultScenario.WarmUpDuration then
                 otherScenario.WarmUpDuration
@@ -124,10 +123,12 @@ type ScenarioBuilder(name : string) =
                 otherScenario.LoadSimulations
             else
                 scenario.LoadSimulations
+          GetStepsOrder = fun () -> [|0..steps.Length-1|]
         }
 
 
-    member _.Zero() = empty
+    member _.Zero() = Scenario.create name [] |> ScenarioNoSteps
+
     member inline __.Yield(()) = __.Zero()
     member inline __.Yield(step : IStep) = __.Steps(__.Zero(), [step])
     member inline _.Delay f = f()

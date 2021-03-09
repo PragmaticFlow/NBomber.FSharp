@@ -2,7 +2,7 @@
 
 open System
 open System.Threading.Tasks
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.NonAffine
 open Expecto
 open Expecto.Flip
 open NBomber.Configuration
@@ -112,8 +112,8 @@ let runnerTests =
                     member _.SinkName = "empty"
                     member _.SaveFinalStats _ = Task.CompletedTask
                     member _.SaveRealtimeStats _ = Task.CompletedTask
-                    member _.Init(_,_) = ()
-                    member _.Start _ = Task.CompletedTask
+                    member _.Init(_,_) = Task.CompletedTask
+                    member _.Start() = Task.CompletedTask
                     member _.Stop() = Task.CompletedTask
                     member _.Dispose() = () }
             let ctx = report {
@@ -126,13 +126,12 @@ let runnerTests =
 
             }
             ctx.Formats
-            |> Expect.wantSome "formats not set"
             |> Expect.equal "wrong formats list" [ ReportFormat.Md
                                                    ReportFormat.Csv
                                                    ReportFormat.Html ]
             ctx.Sinks
             |> Expect.equal "wrong reporter sinks" [ dummySink ]
-            ctx.Interval
+            ctx.SendStatsInterval
             |> Expect.equal "wrong report interval" (seconds 22)
             ctx.FolderName
             |> Expect.wantSome "folder name not set"
@@ -153,7 +152,7 @@ let runnerTests =
                         }
                     ]
                 }
-            ctx.ReportFormats
+            ctx.Reporting.Formats
             |> Expect.equal "wrong report format list" [ ReportFormat.Html ]
 
             ctx.RegisteredScenarios.Length

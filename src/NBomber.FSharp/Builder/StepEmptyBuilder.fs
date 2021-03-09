@@ -1,6 +1,6 @@
 namespace NBomber.FSharp
 
-open NBomber
+open System.Threading.Tasks
 open NBomber.Contracts
 
 
@@ -9,23 +9,26 @@ type StepEmpty<'c, 'f> =
       Pool: IConnectionPoolArgs<'c> }
 
 type StepEmptyBuilder() =
-
-    let empty =
-        { Feed = Feed.empty
-          Pool = ConnectionPoolArgs.empty
+    let zero =
+        let ignoreTask _ = Task.FromResult()
+        { Feed = Feed.createConstant "empty" [()]
+          Pool = ConnectionPoolArgs.create("empty", ignoreTask, ignoreTask)
         }
 
-    member inline _.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, 'f>) =
-        { Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
-          Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+    member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, 'f>) =
+        let zero = __.Zero()
+        { Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
+          Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
         }
-    member inline _.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<unit, 'f>) =
-        { Feed = if box state2.Feed = box Feed.empty then state.Feed else state2.Feed
+    member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<unit, 'f>) =
+        let zero = __.Zero()
+        { Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
           Pool = state.Pool
         }
-    member inline _.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, unit>) =
+    member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, unit>) =
+        let zero = __.Zero()
         { Feed = state.Feed
-          Pool = if box state2.Pool = box ConnectionPoolArgs.empty then state.Pool else state2.Pool
+          Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
         }
 
     member inline __.For (state: StepEmpty<unit,'f>, f: unit -> StepEmpty<'c,unit>) =
@@ -41,9 +44,10 @@ type StepEmptyBuilder() =
           Pool = state.Pool
         }
 
-    member _.Zero() = empty
+    member __.Zero() = zero
     member inline __.Yield (()) = __.Zero()
     member inline __.Yield(pool : IConnectionPoolArgs<'c>) =
-      { Feed = Feed.empty
-        Pool = pool }
+      { Feed = __.Zero().Feed
+        Pool = pool
+      }
     member inline _.Delay f = f()

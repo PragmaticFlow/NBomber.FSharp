@@ -355,7 +355,7 @@ MigrationBackup/
 # fsdocs
 .fsdocs/
 output/
-
+tmp/
 reports/
 nuget/
 push.sh

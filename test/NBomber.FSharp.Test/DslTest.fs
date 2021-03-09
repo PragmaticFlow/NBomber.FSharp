@@ -4,7 +4,7 @@ open System.Net.WebSockets
 
 open System
 open System.Threading.Tasks
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.NonAffine
 open Hopac
 open FSharp.Json
 open FsHttp.DslCE
@@ -13,24 +13,24 @@ open NBomber.Contracts
 open NBomber.FSharp
 open NBomber.FSharp.Hopac
 open NBomber.FSharp.Http
-open System.Threading
 
 /// Dummy user record
 type User = { Id: Guid; UserName: string }
 type ID = ID of int
+
 type DummyConnection =
     { Nr: int
       IsOpen: bool
     }
     member __.Open =
         { __ with IsOpen = true }
-    member __.OpenTask (token: CancellationToken) = task {
+    member __.OpenTask (ctx: IBaseContext) = task {
         return { __ with IsOpen = true }
     }
-    member __.OpenAsync (token: CancellationToken) = async {
+    member __.OpenAsync (ctx: IBaseContext) = async {
         return { __ with IsOpen = true }
     }
-    member __.Close (token: CancellationToken) = task {
+    member __.Close (ctx: IBaseContext) = task {
         return { __ with IsOpen = false }
     }
 
@@ -48,13 +48,13 @@ let ``connection pool connect changes type of connection``(): IConnectionPoolArg
 
         connect (fun _ -> async { return 42 })
         connect (fun _ -> async { return ID 42 })
-        connect (fun nr token -> async {
+        connect (fun nr ctx -> async {
             let c = { Nr = nr; IsOpen = false }
-            let! isOpen = c.OpenAsync token
+            let! isOpen = c.OpenAsync ctx
             return isOpen
         })
-        disconnect (fun c token -> task {
-            let! _closed = c.Close token
+        disconnect (fun c ctx -> task {
+            let! _closed = c.Close ctx
             return()
         })
     }
@@ -80,15 +80,15 @@ let connectionPoolTest(): IConnectionPoolArgs<ID> =
 
         disconnect ignore
         disconnect (fun _ -> Task.CompletedTask)
-        disconnect (fun _ -> Task.FromResult())
+        disconnect (fun _ -> task  { return () })
         disconnect (fun _ -> async { return () })
-        disconnect (fun _ -> job { return () })
+        disconnect (fun _ -> job   { return () })
 
         disconnect (fun _ _ -> ())
         disconnect (fun _ _ -> Task.CompletedTask)
-        disconnect (fun _ _ -> Task.FromResult())
+        disconnect (fun _ _ -> task  { return () })
         disconnect (fun _ _ -> async { return () })
-        disconnect (fun _ _ -> job { return () })
+        disconnect (fun _ _ -> job   { return () })
 
     }
 
@@ -110,30 +110,30 @@ let stepBuilderTest () =
         connectionPool "websockets" {
             count 100
 
-            connect (fun nr cancel -> task {
+            connect (fun _nr ctx -> task {
               let ws = new ClientWebSocket()
-              do! ws.ConnectAsync(Uri "web.socket.url", cancel)
+              do! ws.ConnectAsync(Uri "web.socket.url", ctx.CancellationToken)
               return ws
             })
 
-            disconnect (fun ws cancel -> task {
-              do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancel)
+            disconnect (fun ws ctx -> task {
+              do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ctx.CancellationToken)
             })
         }
 
     let steps =
         [
           step "response task step" {
-              execute (fun _ -> Response.Ok() |> Task.FromResult)
+              execute (fun _ -> Response.ok() |> Task.FromResult)
           }
           step "response async step" {
-              execute (fun _ -> async { return Response.Ok() })
+              execute (fun _ -> async { return Response.ok() })
           }
           step "response job step" {
-              execute (fun _ -> job { return Response.Ok() })
+              execute (fun _ -> job { return Response.ok() })
           }
           step "response step" {
-            execute (fun _ -> Response.Ok())
+            execute (fun _ -> Response.ok())
           }
 
           step "task step" {
@@ -182,7 +182,7 @@ let stepBuilderTest () =
           httpStep "create request message with context, with dataFeed and connnectionPool" {
               dataFeed data
               conns
-              create (fun ctx -> new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get))
+              execute (fun ctx -> new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get))
               doNotTrack
           }
 
@@ -193,9 +193,9 @@ let stepBuilderTest () =
               //   httpMsg {
               //     GET "https://nbomber.com/user/"
               //   }
-              create(fun ctx ->
+              execute(fun ctx ->
                 httpMsg {
-                  GET (sprintf "https://people.com %A" ctx.FeedItem)
+                  GET ("https://people.com/" + string ctx.FeedItem) // $"https://people.com %A{ctx.FeedItem}"
                   Header "x-requestid" "like above but not random"
                   Header "other-header" "other value"
                   AuthorizationBearer """{"access_token":"bla","expires_in":3600,"token_type":"weird"}"""
@@ -242,14 +242,14 @@ let stepBuilderTest () =
               new Net.Http.HttpRequestMessage()
           }
           httpStep "create a message task" {
-              create (new Net.Http.HttpRequestMessage() |> Task.FromResult)
+              execute (new Net.Http.HttpRequestMessage() |> Task.FromResult)
           }
           httpStep "create a message from context" {
-              create (fun _ctx -> new Net.Http.HttpRequestMessage())
+              execute (fun _ctx -> new Net.Http.HttpRequestMessage())
           }
           httpStep "create a message task from context" {
-              create (fun _ctx ->
-                    new Net.Http.HttpRequestMessage() |> Task.FromResult)
+              execute (fun _ctx ->
+                  new Net.Http.HttpRequestMessage() |> Task.FromResult)
           }
 
           httpStep "FsHttp" {
@@ -266,7 +266,7 @@ let stepBuilderTest () =
               }
           }
           step "allow mixing regular and http steps and pauses" {
-              execute (fun _ -> Response.Ok() |> Task.FromResult)
+              execute (fun _ -> Response.ok() |> Task.FromResult)
           }
           step "pause 100 s" {
             pause (seconds 100)

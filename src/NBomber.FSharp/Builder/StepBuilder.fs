@@ -2,7 +2,7 @@ namespace NBomber.FSharp
 
 open System
 open System.Threading.Tasks
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.NonAffine
 open NBomber.Contracts
 
 
@@ -42,7 +42,7 @@ type StepBuilder(name: string) =
           Pool = state.Pool
           Execute = fun ctx -> task {
             do! exe ctx
-            return Response.Ok()
+            return Response.ok()
           }
           DoNotTrack = false
         }
@@ -52,7 +52,7 @@ type StepBuilder(name: string) =
           Pool = state.Pool
           Execute = fun ctx -> task {
             do exe ctx
-            return Response.Ok()
+            return Response.ok()
           }
           DoNotTrack = false
         }
@@ -62,7 +62,7 @@ type StepBuilder(name: string) =
           Pool = state.Pool
           Execute = fun ctx -> task {
             do! exe ctx
-            return Response.Ok()
+            return Response.ok()
           }
           DoNotTrack = false
         }
@@ -72,7 +72,7 @@ type StepBuilder(name: string) =
           Pool = state.Pool
           Execute = fun ctx -> task {
             do! exe ctx
-            return Response.Ok()
+            return Response.ok()
           }
           DoNotTrack = false
         }
@@ -90,4 +90,4 @@ type StepBuilder(name: string) =
         { state with DoNotTrack = true }
 
     member _.Run(state : FullStep<'c,'f>) =
-        Step.create(name, state.Pool, state.Feed, state.Execute, state.DoNotTrack)
+        Step.create(name, state.Execute, state.Pool, state.Feed, state.DoNotTrack)

@@ -6,7 +6,7 @@ open NBomber.FSharp.Http
 open NBomber.FSharp.Hopac
 open FsHttp.DslCE
 open FSharp.Json
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.NonAffine
 open System
 open System.Net.WebSockets
 
@@ -15,12 +15,10 @@ type Token =
       expires_in : int
       token_type : string
     }
-
 // just for demo. actual entry point is Main.main
 //[<EntryPoint>]
 let main' (argv: string[]) : int =
     testSuite "demo suite" {
-
         report {
             html
         }
@@ -31,14 +29,14 @@ let main' (argv: string[]) : int =
                 connectionPool "websockets" {
                     count 100
 
-                    connect (fun _nr cancel -> task {
+                    connect (fun _nr ctx -> task {
                       let ws = new ClientWebSocket()
-                      do! ws.ConnectAsync(Uri "web.socket.url", cancel)
+                      do! ws.ConnectAsync(Uri "web.socket.url", ctx.CancellationToken)
                       return ws
                     })
 
-                    disconnect (fun ws cancel -> task {
-                      do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancel)
+                    disconnect (fun ws ctx -> task {
+                      do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ctx.CancellationToken)
                     })
                 }
                 execute (fun ctx -> ctx.Logger.Information "start regular action")
@@ -73,7 +71,7 @@ let main' (argv: string[]) : int =
             }
 
             httpStep "http step demo" {
-                create(fun ctx ->
+                execute(fun ctx ->
                     httpMsg {
                         POST "https://reqres.in/api/users"
                         CacheControl "no-cache"

@@ -4,31 +4,15 @@ open System
 open NBomber.Configuration
 open NBomber.Contracts
 
-type ReportContext =
-    { FileName: string option
-      FolderName: string option
-      Formats:  ReportFormat list option
-      Sinks: IReportingSink list
-      Interval: TimeSpan
-    }
-    static member Empty =
-        { FolderName = None
-          FileName = None
-          Formats = None
-          Sinks = []
-          Interval = TimeSpan.FromSeconds(10.0)
-        }
-
-[<AutoOpen>]
-module private ReportInternals =
-    let inline addFormat format ctx =
-        let formats =
-            match ctx.Formats with
-            | None -> Some [format]
-            | Some fs -> Some (format::fs)
-        { ctx with Formats = formats }
 
 type ReportBuilder() =
+    member inline __.AddFormat format ctx =
+        if ctx.Formats = __.Zero().Formats then
+            { ctx with Formats = [format] }
+        elif List.contains format ctx.Formats then
+            ctx
+        else
+            { ctx with Formats = format::ctx.Formats |> List.distinct }
 
     [<CustomOperation "fileName">]
     member inline _.FileName (ctx, fileName ) =
@@ -38,27 +22,27 @@ type ReportBuilder() =
         { ctx with FolderName = Some folderName }
 
     [<CustomOperation "html">]
-    member inline _.Html ctx =
-        ctx |> addFormat ReportFormat.Html
+    member inline __.Html ctx =
+        __.AddFormat ReportFormat.Html ctx
     [<CustomOperation "csv">]
-    member inline _.Csv ctx =
-        ctx |> addFormat ReportFormat.Csv
+    member inline __.Csv ctx =
+        __.AddFormat  ReportFormat.Csv ctx
     [<CustomOperation "markdown">]
-    member inline _.Md ctx =
-        ctx |> addFormat ReportFormat.Md
+    member inline __.Md ctx =
+        __.AddFormat  ReportFormat.Md ctx
     [<CustomOperation "text">]
-    member inline _.Text ctx =
-        ctx |> addFormat ReportFormat.Txt
+    member inline __.Text ctx =
+        __.AddFormat ReportFormat.Txt ctx
 
     [<CustomOperation "sink">]
     member inline _.Sink(ctx, reporter) =
         { ctx with Sinks = reporter::ctx.Sinks }
 
     [<CustomOperation "interval">]
-    member inline _.Report(ctx, interval: TimeSpan) =
-        { ctx with Interval = interval }
+    member inline _.Report(ctx: ReportingContext, interval: TimeSpan) =
+        { ctx with SendStatsInterval = interval }
 
-    member inline _.Zero() = ReportContext.Empty
+    member _.Zero() = zeroContext.Reporting
     member inline __.Yield(()) = __.Zero()
     member inline _.Delay f = f()
-    member inline _.Run (ctx: ReportContext) = ctx
+    member inline _.Run (ctx: ReportingContext) = ctx

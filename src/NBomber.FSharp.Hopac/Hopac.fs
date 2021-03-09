@@ -15,7 +15,7 @@ type StepBuilder(name : string) =
               DoNotTrack = false
             }
         member inline __.Execute(state: StepEmpty<'c,'f>, exe: IStepContext<'c, 'f> -> Job<unit>) =
-            __.Execute(state, exe >> Job.map(fun _ -> Response.Ok()))
+            __.Execute(state, exe >> Job.map(fun _ -> Response.ok()))
 
 type ScenarioBuilder(name: string) =
     inherit NBomber.FSharp.ScenarioBuilder(name) with
@@ -30,20 +30,20 @@ type ScenarioBuilder(name: string) =
 
 type ConnectionPoolBuilder(name: string) =
     inherit NBomber.FSharp.ConnectionPoolBuilder(name) with
-    member inline __.Connect(ctx, f: unit -> Job<'T>) =
+    member inline _.Connect(ctx, f: unit -> Job<'T>) =
         { Count = ctx.Count
           Connect = (fun _ _ -> f() |> startAsTask)
-          Disconnect = (fun _ _ -> Task.CompletedTask)
+          Disconnect = (fun _ _ -> Task.FromResult())
         }
-    member inline __.Connect(ctx, f: int -> CancellationToken -> Job<'T>) =
+    member inline _.Connect(ctx, f: int -> IBaseContext -> Job<'T>) =
         { Count = ctx.Count
-          Connect = (fun nr token -> f nr token |> startAsTask)
-          Disconnect = (fun _ _ -> Task.CompletedTask)
+          Connect = (fun nr b -> f nr b |> startAsTask)
+          Disconnect = (fun _ _ -> Task.FromResult())
         }
-    member inline __.Disconnect(ctx, f: 'T -> Job<unit>) =
-        { ctx with Disconnect = fun c _ -> f c |> startAsTask :> Task}
-    member inline __.Disconnect(ctx, f: 'T -> CancellationToken -> Job<unit>) =
-        { ctx with Disconnect = fun c token -> f c token |> startAsTask :> Task }
+    member inline _.Disconnect(ctx, f: 'T -> Job<unit>) =
+        { ctx with Disconnect = fun c _ -> f c |> startAsTask }
+    member inline _.Disconnect(ctx, f: 'T -> IBaseContext -> Job<unit>) =
+        { ctx with Disconnect = fun c b -> f c b |> startAsTask }
 
 let connectionPool = ConnectionPoolBuilder
 let step = StepBuilder

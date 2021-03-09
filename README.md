@@ -10,4 +10,5 @@ F# Computation Expressions for [NBomber](https://nbomber.com) API
 
 [![Build history](https://buildstats.info/github/chart/PragmaticFlow/NBomber.FSharp)](https://github.com/PragmaticFlow/NBomber.FSharp/actions)
 
-Look at [Demo.fs](test/NBomber.FSharp.Test/Demo.fs) for usage
+Look at [Demo.fs](test/NBomber.FSharp.Test/Demo.fs) or [programming documentation](docs/Programming.md) for usage
+
