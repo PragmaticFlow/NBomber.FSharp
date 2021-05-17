@@ -7,6 +7,8 @@ open Expecto
 open Expecto.Flip
 open NBomber.Configuration
 open NBomber.Contracts
+open NBomber
+open NBomber.FSharp
 
 let delay (time: TimeSpan) (logger: Serilog.ILogger) =
     task {
@@ -51,7 +53,7 @@ let scenarioTests =
                 (seconds 30)
 
             scn.LoadSimulations
-            |> Expect.equal "wrong load simulations" [ InjectPerSec(50, minutes 1) ]
+            |> Expect.equal "wrong load simulations" [ KeepConstant(1, minutes 1) ]
             scn.Init
             |> Expect.isNone "scenario init action is not set"
             scn.Clean
@@ -173,7 +175,8 @@ let runnerTests =
                 }
                 scenarios [
                     scenario "empty scenario" {
-                        load [ InjectPerSec(1000, seconds 30) ]
+                        noWarmUp
+                        load [ InjectPerSec(1000000, seconds 10) ]
                         step "empty step" {
                             execute ignore
                         }

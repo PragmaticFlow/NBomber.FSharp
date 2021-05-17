@@ -11,6 +11,7 @@ type StepBuilder(name : string) =
         member inline __.Execute (state: StepEmpty<'c,'f>, exe : IStepContext<'c,'f> -> Job<Response>) =
             { Feed = state.Feed
               Pool = state.Pool
+              Timeout = Defaults.timeout
               Execute = exe >> startAsTask
               DoNotTrack = false
             }
@@ -29,7 +30,7 @@ type ScenarioBuilder(name: string) =
             __.Clean(scenario, clean >> startAsTask)
 
 type ConnectionPoolBuilder(name: string) =
-    inherit NBomber.FSharp.ConnectionPoolBuilder(name) with
+    inherit NBomber.FSharp.ClientBuilder(name) with
     member inline _.Connect(ctx, f: unit -> Job<'T>) =
         { Count = ctx.Count
           Connect = (fun _ _ -> f() |> startAsTask)
@@ -45,6 +46,6 @@ type ConnectionPoolBuilder(name: string) =
     member inline _.Disconnect(ctx, f: 'T -> IBaseContext -> Job<unit>) =
         { ctx with Disconnect = fun c b -> f c b |> startAsTask }
 
-let connectionPool = ConnectionPoolBuilder
+let clients = ConnectionPoolBuilder
 let step = StepBuilder
 let scenario = ScenarioBuilder

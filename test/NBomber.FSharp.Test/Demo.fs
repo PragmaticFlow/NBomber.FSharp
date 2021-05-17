@@ -26,7 +26,7 @@ let main' (argv: string[]) : int =
         scenario "demo scenario" {
 
             step "regular action step" {
-                connectionPool "websockets" {
+                clients "websockets" {
                     count 100
 
                     connect (fun _nr ctx -> task {

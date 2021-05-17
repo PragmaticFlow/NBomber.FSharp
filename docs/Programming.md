@@ -76,11 +76,11 @@ NBomber can create reports in different formats or you can define own using cust
 let reportingSink =
     { new IReportingSink with
         member _.SinkName = "My custom reporting sink"
-        member _.Init(logger, infraConfig) = Task.CompletedTask
+        member _.Init(context, infraConfig) = Task.CompletedTask
         member _.Start(testInfo) = Task.CompletedTask
         member _.Stop() = Task.CompletedTask
-        member _.SaveRealtimeStats(stats) = Task.CompletedTask
-        member _.SaveFinalStats(stats) = Task.CompletedTask
+        member _.SaveRealtimeStats(scenarioStats) = Task.CompletedTask
+        member _.SaveFinalStats(nodeStats) = Task.CompletedTask
         member _.Dispose() = ()
     }
 ```
@@ -122,10 +122,10 @@ testSuite "test and report" {
 
 ## Connection Pool
 
-There is an `IConnectionPoolArgs<'T>` interface for creating connection pools. It is a little verbose for the cases where you just define a number of connections and function to create one connection. For such cases there is a connectionPool CE.
+There is an `IClientFactory<'T>` interface for creating client pools. It is a little verbose for the cases where you just define a number of connections and function to create one connection. For such cases there is a clients CE.
 
 ```fsharp
-connectionPool "pool of 42s" {
+clients "pool of 42s" {
     count 42
     connect (fun i ctx -> async { return 42 })
     disconnect (fun conn ctx -> async { return () })
@@ -135,11 +135,7 @@ connectionPool "pool of 42s" {
 The connect and disconnect functions are accept functions, returning the connection type `'T` itself, or wrapped in `Async<'T>` or `Task<'T>`, or even in Hopac `Job<'T>` if you reference [NBomber.FSharp.Hopac](https://www.nuget.org/packages/NBomber.FSharp.Hopac/) NuGet. As always, anything here is optional (expect connect of course). Here is a shortest way you define a pool of 100 int numbers:
 
 ```fsharp
-connectionPool "pool of integer numbers" {
+clients "pool of integer numbers" {
     connect (fun i _ -> i)
 }
-```
-
-
-```fsharp
 ```

@@ -6,6 +6,7 @@
         <Copyright>PragmaticFlow@2020</Copyright>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageProjectUrl>https://nbomber.com</PackageProjectUrl>
+        <PackageVersion>0.0.3</PackageVersion>
         <PackageIcon>logo.png</PackageIcon>
         <RepositoryUrl>https://github.com/PragmaticFlow/NBomber.FSharp</RepositoryUrl>
         <PackageTags>load-testing, performance-testing, integration-testing, fsharp</PackageTags>
@@ -17,7 +18,7 @@
 
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="5.0.1" />
-        <PackageReference Include="NBomber" Version="2.0.0-beta3" />
+        <PackageReference Include="NBomber" Version="2.0.0" />
     </ItemGroup>
 
     <ItemGroup>

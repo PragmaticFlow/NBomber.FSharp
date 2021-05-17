@@ -5,14 +5,14 @@ open FSharp.Control.Tasks.NonAffine
 open NBomber.Contracts
 
 
-type ConnectionPoolBuilder(name: string) =
+type ClientBuilder(name: string) =
     /// number of connections in the pool
     [<CustomOperation "count">]
-    member inline _.Count(ctx: ConnectionPoolContext<'a>, count ) =
+    member inline _.Count(ctx: ClientContext<'a>, count ) =
         { ctx with Count = Some count }
 
     [<CustomOperation "connect">]
-    member inline __.Connect(ctx: ConnectionPoolContext<'a>, f: int -> IBaseContext -> Task<'b>) : ConnectionPoolContext<'b> =
+    member inline __.Connect(ctx: ClientContext<'a>, f: int -> IBaseContext -> Task<'b>) : ClientContext<'b> =
         connect ctx f
     member inline __.Connect(ctx, f: unit -> Task<'T>) =
         connect ctx (fun _ _ -> f())
@@ -52,21 +52,21 @@ type ConnectionPoolBuilder(name: string) =
     member inline __.Disconnect(ctx, f: 'a -> unit) =
         { ctx with Disconnect = fun c _ -> task { do f c }}
 
-    member __.Zero() = ConnectionPoolContext<_>.Empty
+    member __.Zero() = ClientContext<_>.Empty
     member inline __.Yield(()) = __.Zero()
     member inline _.Delay f = f()
-    member __.Run(ctx: ConnectionPoolContext<'a>) : IConnectionPoolArgs<'a> =
+    member __.Run(ctx: ClientContext<'a>) : IClientFactory<'a> =
         match ctx.Count with
         | None ->
-            ConnectionPoolArgs.create(
+            ClientFactory.create(
                 name = name,
-                openConnection = (fun (i, b) -> ctx.Connect i b),
-                closeConnection = (fun (c, b) -> ctx.Disconnect c b)
+                initClient = (fun (i, b) -> ctx.Connect i b),
+                disposeClient = (fun (c, b) -> ctx.Disconnect c b)
             )
         | Some count ->
-            ConnectionPoolArgs.create(
+            ClientFactory.create(
                 name = name,
-                openConnection = (fun (i, b) -> ctx.Connect i b),
-                closeConnection = (fun (c, b) -> ctx.Disconnect c b),
-                connectionCount = count)
+                initClient = (fun (i, b) -> ctx.Connect i b),
+                disposeClient = (fun (c, b) -> ctx.Disconnect c b),
+                clientCount = count)
 

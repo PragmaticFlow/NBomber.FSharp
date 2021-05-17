@@ -1,10 +1,11 @@
 [<AutoOpen>]
 module NBomber.FSharp.Internals
 
+open NBomber.Domain
 open NBomber.Contracts
 open System.Threading.Tasks
 
-type ConnectionPoolContext<'T> =
+type ClientContext<'T> =
     { Connect: int -> IBaseContext -> Task<'T>
       Disconnect: 'T -> IBaseContext -> Task<unit>
       Count : int option
@@ -15,7 +16,7 @@ type ConnectionPoolContext<'T> =
           Count = None
         }
 
-let inline connect (ctx: ConnectionPoolContext<'A>)
+let inline connect (ctx: ClientContext<'A>)
                    (f: int -> IBaseContext -> Task<'B>) =
     { Connect = f
       Disconnect = fun _ _ -> Task.FromResult()
@@ -25,11 +26,11 @@ let inline connect (ctx: ConnectionPoolContext<'A>)
 let zeroContext = NBomberRunner.registerScenarios []
 
 
-let inline checkFailureRate failureRate nodeStats =
+let inline checkFailureRate failureRate (nodeStats: Stats.NodeStats) =
     nodeStats.RequestCount <> 0
     && (float nodeStats.FailCount / float nodeStats.RequestCount) <= failureRate
 
-let inline getExitCode ctx (runResult: Result<NodeStats, string>) =
+let inline getExitCode ctx (runResult: Result<Stats.NodeStats, string>) =
     match runResult with
     | Error e ->
         eprintf """Error in "%s"/"%s":\n%A""" ctx.TestSuite ctx.TestName e

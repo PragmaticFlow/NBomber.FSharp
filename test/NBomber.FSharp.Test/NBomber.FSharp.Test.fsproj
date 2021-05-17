@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SchlenkR.FsHttp" Version="5.0.0" />
+    <PackageReference Include="SchlenkR.FsHttp" Version="5.1.0" />
     <PackageReference Include="Expecto" Version="9.0.2" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.11.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.10.0-*" />

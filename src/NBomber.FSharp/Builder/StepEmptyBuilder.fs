@@ -6,13 +6,13 @@ open NBomber.Contracts
 
 type StepEmpty<'c, 'f> =
     { Feed: IFeed<'f>
-      Pool: IConnectionPoolArgs<'c> }
+      Pool: IClientFactory<'c> }
 
 type StepEmptyBuilder() =
     let zero =
         let ignoreTask _ = Task.FromResult()
         { Feed = Feed.createConstant "empty" [()]
-          Pool = ConnectionPoolArgs.create("empty", ignoreTask, ignoreTask)
+          Pool = ClientFactory.create("empty", ignoreTask, ignoreTask)
         }
 
     member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, 'f>) =
@@ -46,7 +46,7 @@ type StepEmptyBuilder() =
 
     member __.Zero() = zero
     member inline __.Yield (()) = __.Zero()
-    member inline __.Yield(pool : IConnectionPoolArgs<'c>) =
+    member inline __.Yield(pool : IClientFactory<'c>) =
       { Feed = __.Zero().Feed
         Pool = pool
       }

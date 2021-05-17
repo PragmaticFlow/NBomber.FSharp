@@ -34,8 +34,8 @@ type DummyConnection =
         return { __ with IsOpen = false }
     }
 
-let ``connection pool connect changes type of connection``(): IConnectionPoolArgs<DummyConnection> =
-    connectionPool """operation "connect" changes the type of connection pool""" {
+let ``connection pool connect changes type of connection``(): IClientFactory<DummyConnection> =
+    clients """operation "connect" changes the type of connection pool""" {
 
         connect (fun _ -> 42 |> Task.FromResult)
         disconnect (printfn "disconnect %i")
@@ -59,8 +59,8 @@ let ``connection pool connect changes type of connection``(): IConnectionPoolArg
         })
     }
 
-let connectionPoolTest(): IConnectionPoolArgs<ID> =
-    connectionPool "connection pool overloads" {
+let clientsTest(): IClientFactory<ID> =
+    clients "connection pool overloads" {
         count 42
         count 24
 
@@ -107,7 +107,7 @@ let stepBuilderTest () =
         |> Feed.createCircular "none"
 
     let conns =
-        connectionPool "websockets" {
+        clients "websockets" {
             count 100
 
             connect (fun _nr ctx -> task {
@@ -160,6 +160,7 @@ let stepBuilderTest () =
               conns
               execute (fun ctx -> delay (ms 10) ctx.Logger)
               doNotTrack
+              timeout (seconds 1)
           }
 
           step "wait pause 100" {
@@ -171,10 +172,10 @@ let stepBuilderTest () =
               conns
               execute (fun ctx ->
                   let takeBoth (_: Guid) (_: ClientWebSocket) = ""
-                  ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Connection) )
+                  ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Client) )
           }
 
-          httpStep "yield request message, can't use dataFeed and connectionPool" {
+          httpStep "yield request message, can't use dataFeed and clients" {
               new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get)
               doNotTrack
           }
@@ -188,8 +189,8 @@ let stepBuilderTest () =
 
           httpStep "all http features" {
               dataFeed data
-              //   connectionPool conns
-              // NOTE this does not compile if there is dataFeed or connectionPool
+              //   clients conns
+              // NOTE this does not compile if there is dataFeed or clients
               //   httpMsg {
               //     GET "https://nbomber.com/user/"
               //   }

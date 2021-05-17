@@ -13,7 +13,7 @@ open Serilog
 
 type HttpStepRequest<'c, 'f> =
     { Feed: IFeed<'f>
-      Pool: IConnectionPoolArgs<'c>
+      Pool: IClientFactory<'c>
       DoNotTrack: bool
       Execute: IStepContext<'c, 'f> -> Task<HttpRequestMessage>
       Version: Version
@@ -170,7 +170,7 @@ type HttpStepBuilder(name: string) =
 
     // member _.Zero() = empty
     member inline __.Yield(()) = __.Zero()
-    member inline __.Yield(pool: IConnectionPoolArgs<'c>) =
+    member inline __.Yield(pool: IClientFactory<'c>) =
         { Feed = __.Zero().Feed; Pool = pool }
     member inline _.Delay f = f()
     member inline __.Yield(httpMsg: HttpRequestMessage): HttpStepRequest<unit,unit> =
@@ -228,7 +228,7 @@ type HttpStepBuilder(name: string) =
 
                 try
                     let! response =
-                        state.HttpClientFactory(string ctx.CorrelationId)
+                        state.HttpClientFactory(string ctx.ScenarioInfo.ScenarioName)
                             .SendAsync(request, state.CompletionOption, ctx.CancellationToken)
 
                     sw.Stop()
@@ -253,11 +253,12 @@ type HttpStepBuilder(name: string) =
                     | ex -> return Response.fail(ex)
             }
 
+
         Step.create (
             name,
-            exec = action,
+            execute = action,
             feed = state.Feed,
-            pool = state.Pool,
+            clientFactory = state.Pool,
             doNotTrack = state.DoNotTrack)
 
 [<AutoOpen>]

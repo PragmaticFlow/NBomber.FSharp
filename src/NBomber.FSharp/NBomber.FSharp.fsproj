@@ -5,7 +5,7 @@
 
   <ItemGroup>
     <Compile Include="Builder/Internals.fs" />
-    <Compile Include="Builder/ConnectionsBuilder.fs" />
+    <Compile Include="Builder/ClientBuilder.fs" />
     <Compile Include="Builder/StepEmptyBuilder.fs" />
     <Compile Include="Builder/StepBuilder.fs" />
     <Compile Include="Builder/ScenarioBuilder.fs" />
