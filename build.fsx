@@ -34,7 +34,7 @@ let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
 module NuGet =
   let private nuget = "nuget"
-  let private apiKey = "oy2h6g7bcbpbbt3wvhhq36h72lm3bbaelbrntk254ikp7i"
+  let private apiKey = Environment.environVar "NUGET_KEY"
   let src = "https://api.nuget.org/v3/index.json"
   let push nupkg =
     Trace.trace $"Publishing nuget package: %s{nupkg}"
