@@ -10,8 +10,6 @@ F# Computation Expressions for [NBomber](https://nbomber.com) API
 
 [![Build history](https://buildstats.info/github/chart/PragmaticFlow/NBomber.FSharp)](https://github.com/PragmaticFlow/NBomber.FSharp/actions)
 
-Look at [Demo.fs](test/NBomber.FSharp.Test/Demo.fs) or [programming documentation](docs/Programming.md) for usage
-
 ### Scenario
 
 <table> <tbody>
@@ -88,10 +86,10 @@ step "step name" {
 
 Simplified construction of clients. Notable differences are:
 
-- `connect` and `disconnect` are more tolerant for missing type signatures and arguments
+- `connect` and `disconnect` functions are more tolerant for missing type signatures and arguments
 - no need for `cancellationToken` argument if it is not used in `connect` or `disconnect` functions
 - `disconnect` can be omitted completely, if the type of created connection implements `IDisposable` or can be just disposed.
-- `count` of connections can be omitted too, it defaults to `50`
+- `count` of connections can be omitted too, it defaults to `1`
 - even less verbose compared to the C# API
 
 <table> <tbody>
@@ -200,6 +198,7 @@ NBomberRunner.registerScenarios []
 |> NBomberRunner.withTestName "Test name"
 |> NBomberRunner.withTestSuite "Suite name"
 |> NBomberRunner.withoutReports
+|> NBomberRunner.disableHintsAnalyzer
 |> NBomberRunner.loadConfig "loadTestConfig.json"
 |> NBomberRunner.loadInfraConfig "infrastructureConfig.json"
 |> NBomberRunner.withWorkerPlugins []
@@ -215,6 +214,7 @@ NBomberRunner.registerScenarios []
 testSuite "Suite name" {
     testName "Test name"
     noReports
+    noHintsAnalyzer
     scenarios scenarioBuilderTest
     config "loadTestConfig.json"
     infraConfig "infrastructureConfig.json"

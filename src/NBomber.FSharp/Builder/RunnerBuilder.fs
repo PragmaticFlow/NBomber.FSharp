@@ -43,6 +43,10 @@ type RunnerBuilder(name: string) =
     member _.Plugins(ctx, plugins) =
         { ctx with WorkerPlugins = plugins }
 
+    [<CustomOperation "noHintsAnalyzer">]
+    member _.NoHintAnalyzer(ctx: NBomberContext) =
+        { ctx with UseHintsAnalyzer = false }
+
     [<CustomOperation "runProcess">]
     member _.ApplicationTypeProcess(ctx) =
         { ctx with ApplicationType = Some ApplicationType.Process }

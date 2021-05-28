@@ -362,6 +362,7 @@ let runnerBuilderTest reportingSink =
 
         plugins []
 
+        noHintsAnalyzer
         runConsole
     }
 

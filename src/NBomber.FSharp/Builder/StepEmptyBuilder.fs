@@ -31,9 +31,9 @@ type StepEmptyBuilder() =
           Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
         }
 
-    member inline __.For (state: StepEmpty<unit,'f>, f: unit -> StepEmpty<'c,unit>) =
+    member inline _.For (state: StepEmpty<unit,'f>, f: unit -> StepEmpty<'c,unit>) =
         { Feed = state.Feed; Pool = f().Pool }
-    member inline __.For (state: StepEmpty<'c,unit>, f: unit -> StepEmpty<unit,'f>) =
+    member inline _.For (state: StepEmpty<'c,unit>, f: unit -> StepEmpty<unit,'f>) =
         { Feed = f().Feed; Pool = state.Pool }
     member inline __.For (state: StepEmpty<'c,'f>, f: unit -> StepEmpty<'c,'f>) =
         __.Combine(state, f())
@@ -44,7 +44,7 @@ type StepEmptyBuilder() =
           Pool = state.Pool
         }
 
-    member __.Zero() = zero
+    member _.Zero() = zero
     member inline __.Yield (()) = __.Zero()
     member inline __.Yield(pool : IClientFactory<'c>) =
       { Feed = __.Zero().Feed

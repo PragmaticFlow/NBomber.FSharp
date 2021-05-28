@@ -108,6 +108,44 @@ let scenarioTests =
 [<Tests>]
 let runnerTests =
     testList "runner" [
+
+        test "defaults" {
+            let ctx =
+                testSuite "test suite" {
+                    scenarios [
+                        scenario "empty scenario" {
+                            step "empty step" {
+                                execute ignore
+                            }
+                        }
+                    ]
+                }
+
+            ctx.Reporting.Formats
+            |> Expect.equal "wrong report format list" [
+                ReportFormat.Txt
+                ReportFormat.Html
+                ReportFormat.Csv
+                ReportFormat.Md
+            ]
+
+            ctx.ApplicationType
+            |> Expect.isNone "wrong application type default"
+
+            ctx.TestName
+            |> Expect.equal "wrong test name default" "nbomber_default_test_name"
+
+            ctx.WorkerPlugins
+            |> Expect.isEmpty "wrong worker plugins default"
+
+            ctx.NBomberConfig
+            |> Expect.isNone "wrong NBomberConfig default"
+
+            ctx.UseHintsAnalyzer
+            |> Expect.isTrue "wrong hints analyzer defaults"
+
+        }
+
         test "reportcontext" {
             let dummySink =
                 { new IReportingSink with

@@ -6,10 +6,11 @@
         <Copyright>PragmaticFlow@2020</Copyright>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageProjectUrl>https://nbomber.com</PackageProjectUrl>
-        <PackageVersion>0.0.3</PackageVersion>
+        <PackageVersion>0.0.4</PackageVersion>
         <PackageIcon>logo.png</PackageIcon>
         <RepositoryUrl>https://github.com/PragmaticFlow/NBomber.FSharp</RepositoryUrl>
         <PackageTags>load-testing, performance-testing, integration-testing, fsharp</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <Description>F# extensions for NBomber</Description>
@@ -18,10 +19,11 @@
 
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="5.0.1" />
-        <PackageReference Include="NBomber" Version="2.0.0" />
+        <PackageReference Include="NBomber" Version="2.0.1" />
     </ItemGroup>
 
     <ItemGroup>
         <None Include="../../docs/img/logo.png" Pack="true" Visible="false" PackagePath=""/>
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>
