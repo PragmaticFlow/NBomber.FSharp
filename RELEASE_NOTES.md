@@ -1,3 +1,7 @@
+## [0.0.5] - 2021-11-12
+
+- update to NBomber 2.1.2
+
 ## [0.0.3] - 2021-05-17
 
 - update to NBomber 2.0

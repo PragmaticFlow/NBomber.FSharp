@@ -129,9 +129,6 @@ let runnerTests =
                 ReportFormat.Md
             ]
 
-            ctx.ApplicationType
-            |> Expect.isNone "wrong application type default"
-
             ctx.TestName
             |> Expect.equal "wrong test name default" "nbomber_default_test_name"
 

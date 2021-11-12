@@ -3,6 +3,7 @@ module NBomber.FSharp.DslTest
 open System.Net.WebSockets
 
 open System
+open System.Net.Http
 open System.Threading.Tasks
 open FSharp.Control.Tasks.NonAffine
 open Hopac
@@ -157,7 +158,7 @@ let stepBuilderTest () =
           }
           step "wait 10" {
               dataFeed data
-              conns
+              connections conns
               execute (fun ctx -> delay (ms 10) ctx.Logger)
               doNotTrack
               timeout (seconds 1)
@@ -169,21 +170,21 @@ let stepBuilderTest () =
 
           step "right types from feed and connections" {
               dataFeed data
-              conns
+              connections conns
               execute (fun ctx ->
                   let takeBoth (_: Guid) (_: ClientWebSocket) = ""
                   ctx.Logger.Information("Can take feed and connection {Ret}", takeBoth ctx.FeedItem ctx.Client) )
           }
 
           httpStep "yield request message, can't use dataFeed and clients" {
-              new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get)
+              execute (fun _ -> new HttpRequestMessage(Method = HttpMethod.Get))
               doNotTrack
           }
 
           httpStep "create request message with context, with dataFeed and connnectionPool" {
               dataFeed data
-              conns
-              execute (fun ctx -> new System.Net.Http.HttpRequestMessage(Method = System.Net.Http.HttpMethod.Get))
+              connections conns
+              execute (fun _ -> new HttpRequestMessage(Method = HttpMethod.Get))
               doNotTrack
           }
 
@@ -220,9 +221,9 @@ let stepBuilderTest () =
           }
 
           httpStep "GET homepage" {
-            httpMsg {
+            execute(httpMsg {
               GET "https://nbomber.com/user/"
-            }
+            })
             prepare (fun _ctx _req -> ())
             prepare (fun _ctx _req -> Task.FromResult())
             prepare (fun ctx req ->
@@ -240,17 +241,16 @@ let stepBuilderTest () =
           }
 
           httpStep "create a message" {
-              new Net.Http.HttpRequestMessage()
+              new HttpRequestMessage()
           }
           httpStep "create a message task" {
-              execute (new Net.Http.HttpRequestMessage() |> Task.FromResult)
+              execute (new HttpRequestMessage() |> Task.FromResult)
           }
           httpStep "create a message from context" {
-              execute (fun _ctx -> new Net.Http.HttpRequestMessage())
+              execute (fun _ctx -> new HttpRequestMessage())
           }
           httpStep "create a message task from context" {
-              execute (fun _ctx ->
-                  new Net.Http.HttpRequestMessage() |> Task.FromResult)
+              execute (fun _ctx -> new HttpRequestMessage() |> Task.FromResult)
           }
 
           httpStep "FsHttp" {
@@ -363,7 +363,7 @@ let runnerBuilderTest reportingSink =
         plugins []
 
         noHintsAnalyzer
-        runConsole
+        runWithArgs []
     }
 
 let yieldScenario =
@@ -375,7 +375,7 @@ let yieldScenario =
         }
         plugins []
         report { html }
-        runProcess
+        runWithArgs []
     }
 
 let yieldStep: Scenario =

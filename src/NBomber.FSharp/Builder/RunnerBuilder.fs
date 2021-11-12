@@ -47,16 +47,6 @@ type RunnerBuilder(name: string) =
     member _.NoHintAnalyzer(ctx: NBomberContext) =
         { ctx with UseHintsAnalyzer = false }
 
-    [<CustomOperation "runProcess">]
-    member _.ApplicationTypeProcess(ctx) =
-        { ctx with ApplicationType = Some ApplicationType.Process }
-        |> NBomberRunner.run
-
-    [<CustomOperation "runConsole">]
-    member _.ApplicationTypeConsole(ctx) =
-        { ctx with ApplicationType = Some ApplicationType.Console }
-        |> NBomberRunner.run
-
     /// run with the specified cli arguments, return exit code
     [<CustomOperation "runWithArgs">]
     member _.WithArgs(ctx : NBomberContext, args) =
@@ -99,7 +89,6 @@ type RunnerBuilder(name: string) =
         let zero = __.Zero()
         {   TestSuite = state.TestSuite
             TestName = state.TestName |> orIfDefault zero.TestName otherState.TestName
-            ApplicationType = state.ApplicationType |> Option.orElse otherState.ApplicationType
             CreateLoggerConfig = state.CreateLoggerConfig |> Option.orElse otherState.CreateLoggerConfig
             InfraConfig = state.InfraConfig |> Option.orElse otherState.InfraConfig
             NBomberConfig = state.NBomberConfig |> Option.orElse otherState.NBomberConfig

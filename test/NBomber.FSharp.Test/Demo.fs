@@ -26,7 +26,7 @@ let main' (argv: string[]) : int =
         scenario "demo scenario" {
 
             step "regular action step" {
-                clients "websockets" {
+                connections (clients "websockets" {
                     count 100
 
                     connect (fun _nr ctx -> task {
@@ -38,7 +38,7 @@ let main' (argv: string[]) : int =
                     disconnect (fun ws ctx -> task {
                       do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ctx.CancellationToken)
                     })
-                }
+                })
                 execute (fun ctx -> ctx.Logger.Information "start regular action")
                 doNotTrack
             }
@@ -50,7 +50,7 @@ let main' (argv: string[]) : int =
             }
 
             httpStep "user authorization" {
-                httpMsg {
+                execute(httpMsg {
                     POST "https://reqres.in/api/token"
 
                     body
@@ -62,11 +62,11 @@ let main' (argv: string[]) : int =
                         "client_id", "client42"
                         "client_secret", "client_secret.XYZ!§$%&"
                     ]
-                }
+                })
                 handle (fun ctx _resp -> task {
                     let! content = _resp.Content.ReadAsStringAsync()
                     let token = content |> Json.deserialize<Token>
-                    ctx.Data.["access_token"] <- token.access_token
+                    ctx.Data["access_token"] <- token.access_token
                 })
             }
 

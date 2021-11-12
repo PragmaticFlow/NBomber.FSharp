@@ -9,8 +9,7 @@ open System.Threading.Tasks
 type StepBuilder(name : string) =
     inherit NBomber.FSharp.StepBuilder(name) with
         member inline __.Execute (state: StepEmpty<'c,'f>, exe : IStepContext<'c,'f> -> Job<Response>) =
-            { Feed = state.Feed
-              Pool = state.Pool
+            { Generic = state
               Timeout = Defaults.timeout
               Execute = exe >> startAsTask
               DoNotTrack = false

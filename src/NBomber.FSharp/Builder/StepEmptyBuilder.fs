@@ -5,49 +5,61 @@ open NBomber.Contracts
 
 
 type StepEmpty<'c, 'f> =
-    { Feed: IFeed<'f>
-      Pool: IClientFactory<'c> }
+    { Feed: IFeed<'f> option
+      Pool: IClientFactory<'c> option }
 
 type StepEmptyBuilder() =
-    let zero =
-        let ignoreTask _ = Task.FromResult()
-        { Feed = Feed.createConstant "empty" [()]
-          Pool = ClientFactory.create("empty", ignoreTask, ignoreTask)
-        }
 
     member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, 'f>) =
-        let zero = __.Zero()
-        { Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
-          Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
-        }
-    member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<unit, 'f>) =
-        let zero = __.Zero()
-        { Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
-          Pool = state.Pool
-        }
-    member inline __.Combine(state: StepEmpty<'c, 'f>, state2: StepEmpty<'c, unit>) =
-        let zero = __.Zero()
-        { Feed = state.Feed
-          Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
-        }
+      { Pool = state2.Pool |> Option.orElse state.Pool
+        Feed = state2.Feed |> Option.orElse state.Feed
+      }
+
+    member inline __.Combine(state: StepEmpty<'c, 'f1>, state2: StepEmpty<'c, 'f2>) =
+      { Pool = state2.Pool |> Option.orElse state.Pool
+        Feed = state2.Feed
+      }
+
+    member inline __.Combine(state: StepEmpty<'c1, 'f>, state2: StepEmpty<'c2, 'f>) =
+      { Pool = state2.Pool
+        Feed = state2.Feed |> Option.orElse state.Feed
+      }
+
+    member inline __.Combine(state: StepEmpty<'c1, 'f1>, state2: StepEmpty<'c2, 'f2>) =
+      { Pool = state2.Pool
+        Feed = state2.Feed
+      }
 
     member inline _.For (state: StepEmpty<unit,'f>, f: unit -> StepEmpty<'c,unit>) =
-        { Feed = state.Feed; Pool = f().Pool }
+        { Feed = state.Feed
+          Pool = f().Pool }
     member inline _.For (state: StepEmpty<'c,unit>, f: unit -> StepEmpty<unit,'f>) =
-        { Feed = f().Feed; Pool = state.Pool }
-    member inline __.For (state: StepEmpty<'c,'f>, f: unit -> StepEmpty<'c,'f>) =
-        __.Combine(state, f())
+        { Feed = f().Feed
+          Pool = state.Pool }
 
     [<CustomOperation "dataFeed">]
     member inline _.WithFeed(state : StepEmpty<'c,_>, feed) : StepEmpty<'c,'f> =
-        { Feed = feed
+        { Feed = Some feed
           Pool = state.Pool
         }
 
-    member _.Zero() = zero
+    [<CustomOperation "connections">]
+    member inline _.WithConnection(state: StepEmpty<'c,'f>, c) =
+      { Feed = state.Feed
+        Pool = Some c
+      }
+
+    member _.Zero() =
+      { Feed = None
+        Pool = None
+      }
     member inline __.Yield (()) = __.Zero()
     member inline __.Yield(pool : IClientFactory<'c>) =
-      { Feed = __.Zero().Feed
-        Pool = pool
+      { Feed = None
+        Pool = Some pool
+      }
+    member inline __.Yield(feed : IFeed<'f>) =
+      { Feed = Some feed
+        Pool = None
       }
     member inline _.Delay f = f()

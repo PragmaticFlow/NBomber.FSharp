@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hopac" Version="0.5.0" />
+    <PackageReference Include="Hopac" Version="0.5.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,8 +12,7 @@ open Microsoft.Extensions.DependencyInjection
 open Serilog
 
 type HttpStepRequest<'c, 'f> =
-    { Feed: IFeed<'f>
-      Pool: IClientFactory<'c>
+    { Generic: StepEmpty<'c, 'f>
       DoNotTrack: bool
       Execute: IStepContext<'c, 'f> -> Task<HttpRequestMessage>
       Version: Version
@@ -73,7 +72,7 @@ module private HttpStepInternals =
         httpClientFactory.CreateClient name
 
 type HttpStepBuilder(name: string) =
-    inherit NBomber.FSharp.StepEmptyBuilder()
+    inherit StepEmptyBuilder()
 
     [<CustomOperation "doNotTrack">]
     member inline _.DoNotTrack(state : HttpStepRequest<'a,'b>) =
@@ -110,8 +109,7 @@ type HttpStepBuilder(name: string) =
     /// provide a function to create request message
     [<CustomOperation "execute">]
     member _.Execute(incomplete: StepEmpty<'c, 'f>, execute: IStepContext<'c,'f> -> Task<HttpRequestMessage>): HttpStepRequest<'c,'f> =
-        { Feed = incomplete.Feed
-          Pool = incomplete.Pool
+        { Generic = incomplete
           Execute = execute
           Version = Version "2.0"
           CompletionOption = HttpCompletionOption.ResponseHeadersRead
@@ -171,49 +169,12 @@ type HttpStepBuilder(name: string) =
     // member _.Zero() = empty
     member inline __.Yield(()) = __.Zero()
     member inline __.Yield(pool: IClientFactory<'c>) =
-        { Feed = __.Zero().Feed; Pool = pool }
+        { Feed = None; Pool = Some pool }
+    member inline __.Yield(feed: IFeed<_>) =
+        { Feed = Some feed; Pool = None }
     member inline _.Delay f = f()
     member inline __.Yield(httpMsg: HttpRequestMessage): HttpStepRequest<unit,unit> =
         __.Execute(__.Zero(), httpMsg)
-
-    member __.Combine(state: HttpStepRequest<'c,'f>, state2 : HttpStepRequest<'c, 'f>) =
-        let zero = __.Zero()
-        { Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
-          Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
-          Execute = state.Execute
-          Version = Version "2.0"
-          CompletionOption = HttpCompletionOption.ResponseHeadersRead
-          HttpClientFactory = defaultHttpClientFactory
-          Checks = state.Checks |> List.append state2.Checks
-          WithRequest = state.WithRequest |> List.append state2.WithRequest
-          WithResponse = state.WithResponse |> List.append state2.WithResponse
-          DoNotTrack = state.DoNotTrack || state2.DoNotTrack
-        }
-
-    member inline __.Combine(state: HttpStepRequest<'c,'f>, state2 : StepEmpty<'c, 'f>) =
-        let zero = __.Zero()
-        { state with
-            Feed = if box state2.Feed = box zero.Feed then state.Feed else state2.Feed
-            Pool = if box state2.Pool = box zero.Pool then state.Pool else state2.Pool
-        }
-    member inline __.Combine(state: StepEmpty<unit,'f>, state2 : HttpStepRequest<'c, unit>) =
-         { Feed = state.Feed
-           Pool = state2.Pool
-         }
-    member inline __.Combine(state: StepEmpty<'c,unit>, state2 : HttpStepRequest<unit,'f>) =
-         { Feed = state2.Feed
-           Pool = state.Pool
-         }
-
-
-    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> StepEmpty<'c,'f>) =
-        __.Combine(state, f())
-    member inline __.For (state: HttpStepRequest<'c,'f>, f: unit -> HttpStepRequest<'c,'f>) =
-        __.Combine(state, f())
-    member inline __.For (xs: seq<'T>, f: 'T -> HttpStepRequest<'c,'f>) =
-        xs
-        |> Seq.map f
-        |> Seq.reduce (fun a b -> __.Combine(a,b))
 
     member _.Run(state: HttpStepRequest<'c,'f>) =
         let action (ctx: IStepContext<'c,'f>) =
@@ -253,13 +214,30 @@ type HttpStepBuilder(name: string) =
                     | ex -> return Response.fail(ex)
             }
 
-
-        Step.create (
-            name,
-            execute = action,
-            feed = state.Feed,
-            clientFactory = state.Pool,
-            doNotTrack = state.DoNotTrack)
+        match state.Generic with
+        | { Pool = None; Feed = None } ->
+          Step.create(name, execute = action, doNotTrack = state.DoNotTrack)
+        | { Pool = None; Feed = Some feed } ->
+          Step.create(name, execute = action, feed = feed, doNotTrack = state.DoNotTrack)
+        | { Pool = Some pool; Feed = None } ->
+            Step.create(
+              name,
+              execute = action,
+              clientFactory = pool,
+              doNotTrack = state.DoNotTrack)
+        | { Pool = Some pool; Feed = Some feed } ->
+            Step.create(
+              name,
+              execute = action,
+              clientFactory = pool,
+              feed = feed,
+              doNotTrack = state.DoNotTrack)
+        // Step.create (
+        //     name,
+        //     execute = action,
+        //     feed = state.Feed,
+        //     clientFactory = state.Pool,
+        //     doNotTrack = state.DoNotTrack)
 
 [<AutoOpen>]
 module Builders =
